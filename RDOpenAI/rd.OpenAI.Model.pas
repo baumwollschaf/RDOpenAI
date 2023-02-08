@@ -90,7 +90,7 @@ type
     FOnAnswer: TMessageEvent;
     FOnError: TMessageEvent;
 
-    FTrimEmptyLines: Boolean;
+    FTrimAnswerLines: Boolean;
 
     FCompletions: TCompletions;
     FRequestInfoProc: TRequestInfoProc;
@@ -113,7 +113,7 @@ type
     destructor Destroy; override;
     procedure Execute; virtual; abstract;
   published
-    property TrimEmptyLines: Boolean read FTrimEmptyLines write FTrimEmptyLines default True;
+    property TrimAnswerLines: Boolean read FTrimAnswerLines write FTrimAnswerLines default True;
     property OnAnswer: TMessageEvent read FOnAnswer write FOnAnswer;
     property OnError: TMessageEvent read FOnError write FOnError;
   end;
@@ -254,7 +254,7 @@ begin
   inherited;
   URL := 'https://api.openai.com/v1';
   FQuestionSettings := TQuestion.Create;
-  FTrimEmptyLines := True;
+  FTrimAnswerLines := True;
 end;
 
 destructor TRDOpenAI.Destroy;
@@ -270,7 +270,7 @@ procedure TRDOpenAI.DoAnswer(AMessage: string);
 begin
   if assigned(FOnAnswer) then
   begin
-    if FTrimEmptyLines then
+    if FTrimAnswerLines then
     begin
       AMessage := TrimText(AMessage);
     end;
@@ -283,7 +283,7 @@ procedure TRDOpenAI.DoError(AMessage: string);
 begin
   if assigned(FOnError) then
   begin
-    if FTrimEmptyLines then
+    if FTrimAnswerLines then
     begin
       AMessage := TrimText(AMessage);
     end;
