@@ -1,7 +1,8 @@
 object Form1: TForm1
   Left = 0
   Top = 0
-  Caption = 'Form1'
+  ActiveControl = Edit1
+  Caption = 'OpenAI ChatGPT Example'
   ClientHeight = 271
   ClientWidth = 480
   FormFactor.Width = 320
@@ -9,40 +10,53 @@ object Form1: TForm1
   FormFactor.Devices = [Desktop]
   OnCreate = FormCreate
   DesignerMasterStyle = 0
-  object Button1: TButton
-    Position.X = 352.000000000000000000
-    Position.Y = 40.000000000000000000
-    TabOrder = 0
-    Text = 'Ask'
-    OnClick = Button1Click
-  end
   object Memo1: TMemo
     Touch.InteractiveGestures = [Pan, LongTap, DoubleTap]
     DataDetectorTypes = []
-    Position.X = 24.000000000000000000
-    Position.Y = 88.000000000000000000
-    Size.Width = 433.000000000000000000
-    Size.Height = 161.000000000000000000
+    Align = Client
+    Margins.Left = 8.000000000000000000
+    Margins.Right = 8.000000000000000000
+    Margins.Bottom = 8.000000000000000000
+    Size.Width = 464.000000000000000000
+    Size.Height = 225.000000000000000000
     Size.PlatformDefault = False
-    TabOrder = 2
-    Viewport.Width = 429.000000000000000000
-    Viewport.Height = 157.000000000000000000
+    TabOrder = 1
+    Viewport.Width = 460.000000000000000000
+    Viewport.Height = 221.000000000000000000
   end
   object Edit1: TEdit
     Touch.InteractiveGestures = [LongTap, DoubleTap]
-    TabOrder = 4
+    Align = Top
+    TabOrder = 3
     Text = 'Hello, how are you?'
-    Position.X = 80.000000000000000000
-    Position.Y = 40.000000000000000000
-    Size.Width = 249.000000000000000000
+    Position.X = 8.000000000000000000
+    Position.Y = 8.000000000000000000
+    Margins.Left = 8.000000000000000000
+    Margins.Top = 8.000000000000000000
+    Margins.Right = 8.000000000000000000
+    Margins.Bottom = 8.000000000000000000
+    Size.Width = 464.000000000000000000
     Size.Height = 22.000000000000000000
     Size.PlatformDefault = False
+    OnChange = Edit1Change
+    OnTyping = Edit1Change
+    OnKeyUp = Edit1KeyUp
+    object Button1: TButton
+      Align = Right
+      Default = True
+      Position.X = 384.000000000000000000
+      TabOrder = 0
+      Text = 'Ask'
+      OnClick = Button1Click
+    end
   end
   object RDChatGpt1: TRDChatGpt
     Temperature = 0.100000000000000000
     Model = 'text-davinci-003'
     ProxyPort = 0
-    Left = 24
-    Top = 24
+    OnAnswer = RDChatGpt1Answer
+    OnError = RDChatGpt1Error
+    Left = 48
+    Top = 72
   end
 end

@@ -100,7 +100,7 @@ type
     FBusy: Boolean;
     FQuestionSettings: TQuestion;
     procedure RefreshCompletions;
-    function TrimText(AText: String): String;
+    function TrimText(AText: string): string;
   protected
     procedure DoAnswer(AMessage: string); virtual;
     procedure DoError(AMessage: string); virtual;
@@ -340,6 +340,7 @@ begin
       FRequestInfoProc(FRequest.Resource, gfGet);
 
     FRequest.Execute;
+
     if assigned(FRequestInfoProc) then
       FRequestInfoProc(FRequest.Resource, gfFinish);
 
@@ -371,7 +372,7 @@ begin
   BaseURL := Value;
 end;
 
-function TRDOpenAI.TrimText(AText: String): String;
+function TRDOpenAI.TrimText(AText: string): string;
 begin
   Result := AText;
   Result := Result.Replace(#13#10, '', [rfReplaceAll]);
