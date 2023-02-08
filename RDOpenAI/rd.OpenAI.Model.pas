@@ -3,7 +3,6 @@ unit rd.OpenAI.Model;
 interface
 
 uses
-  IdSSLOpenSSLHeaders,
   System.SysUtils,
   System.Variants,
   System.Classes,
