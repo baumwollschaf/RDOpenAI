@@ -84,8 +84,7 @@ begin
       PrettyPrintPair(TJSONObject(aJSONValue).Pairs[i], aOutputStrings, i = TJSONObject(aJSONValue).Count - 1, Ident);
 
     aOutputStrings.Add(StringOfChar(' ', Ident) + '}');
-  end
-  else if aJSONValue is TJSONArray then
+  end else if aJSONValue is TJSONArray then
     PrettyPrintArray(TJSONArray(aJSONValue), aOutputStrings, i = TJSONObject(aJSONValue).Count - 1, Ident)
   else
     aOutputStrings.Add(StringOfChar(' ', Ident) + aJSONValue.ToString);

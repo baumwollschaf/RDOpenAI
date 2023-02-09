@@ -380,9 +380,7 @@ end;
 
 procedure TRDOpenAI.RequestCallback;
 var
-  LJsonObj: TJSONObject;
-  LElement: Integer;
-  LVersions: TJSONArray;
+  JsonObj: TJSONObject;
 begin
   try
     if FRequest = nil then
@@ -400,14 +398,14 @@ begin
     if assigned(FRequestInfoProc) then
       FRequestInfoProc(FRequest.Resource, gfFinish);
 
-    LJsonObj := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(FResponse.Content), 0) as TJSONObject;
-    if LJsonObj = nil then
+    JsonObj := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(FResponse.Content), 0) as TJSONObject;
+    if JsonObj = nil then
       Exit;
 
     try
       try
         FreeAndNil(FCompletions);
-        FCompletions := TJson.JsonToObject<TCompletions>(TJSONObject(LJsonObj), cJSON_OPTIONS);
+        FCompletions := TJson.JsonToObject<TCompletions>(TJSONObject(JsonObj), cJSON_OPTIONS);
         if (FCompletions <> nil) and (FCompletions.Choices.Count > 0) then
         begin
           case StrToFinishReason(FCompletions.Choices[0].FinishReason) of
@@ -418,7 +416,7 @@ begin
           end;
         end;
       finally
-        LJsonObj.Free;
+        JsonObj.Free;
       end;
     except
       on E: Exception do
