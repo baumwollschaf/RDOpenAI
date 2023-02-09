@@ -67,10 +67,13 @@ type
     FModel: string;
     FPrompt: string;
     FTemperature: Double;
+    [JSONName('max_tokens')]
+    FMaxTokens: Integer;
   published
     property Model: string read FModel write FModel;
     property Prompt: string read FPrompt write FPrompt;
     property Temperature: Double read FTemperature write FTemperature;
+    property MaxTokens: Integer read FMaxTokens write FMaxTokens;
   end;
 
 implementation

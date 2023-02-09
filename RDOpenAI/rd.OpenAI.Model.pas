@@ -31,17 +31,25 @@ type
   TMessageEvent = procedure(Sender: TObject; AMessage: string) of object;
 
   TRDOpenAIConnection = class abstract(TComponent)
-  strict private
-  const
-    CBEARER = 'Bearer';
+  public type
+    TFinishReason = (frNone, frStop, frLength);
+  private
+    function StrToFinishReason(AValue: String): TFinishReason;
+  private const
+    cBEARER = 'Bearer';
+    cDEF_MAX_TOKENS = 2048; // 1024
+    cDEF_URL = 'https://api.openai.com/v1';
+    cDEF_TEMP = 0.1;
+    cDEF_MODEL = 'text-davinci-003';
   public const
-    CDEFAULT_USER_AGENT = 'RD OPEN AI CONNECT';
-    CJSON_OPTIONS = [JoDateIsUTC, JoDateFormatISO8601, JoIgnoreEmptyArrays];
+    cDEFAULT_USER_AGENT = 'RD OPEN AI CONNECT';
+    cJSON_OPTIONS = [JoDateIsUTC, JoDateFormatISO8601, JoIgnoreEmptyArrays];
   private
     FRESTRequestParameter, FRESTRequestParameter2: TRESTRequestParameter;
     FApiKey: string;
     FTemperature: double;
     FModel: string;
+    FMaxTokens: Integer;
     procedure SetApiKey(const Value: string);
   public
     constructor Create(AOwner: TComponent); override;
@@ -50,6 +58,7 @@ type
     property ApiKey: string read FApiKey write SetApiKey;
     property Temperature: double read FTemperature write FTemperature;
     property Model: string read FModel write FModel;
+    property MaxTokens: Integer read FMaxTokens write FMaxTokens default cDEF_MAX_TOKENS;
   end;
 
   TRDOpenAIRestClient = class abstract(TRDOpenAIConnection)
@@ -89,7 +98,7 @@ type
     FOnAnswer: TMessageEvent;
     FOnError: TMessageEvent;
 
-    FTrimAnswerLines: Boolean;
+    FIgnoreReturns: Boolean;
 
     FCompletions: TCompletions;
     FRequestInfoProc: TRequestInfoProc;
@@ -99,22 +108,26 @@ type
     FBusy: Boolean;
     FQuestionSettings: TQuestion;
     procedure RefreshCompletions;
-    function TrimText(AText: string): string;
+    procedure RequestCallback;
+    function RemoveEmptyLinesWithReturns(AText: string): string;
   protected
+    FAsynchron: Boolean;
     procedure DoAnswer(AMessage: string); virtual;
     procedure DoError(AMessage: string); virtual;
-  private
+  strict private
     function GetCompletions: TCompletions;
+    procedure SetAsynchron(const Value: Boolean);
   public
-    property URL: string read GetURL write SetURL stored True;
     property Completions: TCompletions read GetCompletions;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Execute; virtual; abstract;
   published
-    property TrimAnswerLines: Boolean read FTrimAnswerLines write FTrimAnswerLines default True;
+    property URL: string read GetURL write SetURL stored True;
+    property IgnoreReturns: Boolean read FIgnoreReturns write FIgnoreReturns default True;
     property OnAnswer: TMessageEvent read FOnAnswer write FOnAnswer;
     property OnError: TMessageEvent read FOnError write FOnError;
+    property Asynchron: Boolean read FAsynchron write SetAsynchron default False;
   end;
 
   TRDChatGpt = class(TRDOpenAI)
@@ -153,8 +166,9 @@ begin
   FRESTRequestParameter2.Value := '';
   FRESTRequestParameter2.ContentTypeStr := 'application/json';
 
-  FTemperature := 0.0;
+  FTemperature := cDEF_TEMP;
   FModel := '';
+  FMaxTokens := cDEF_MAX_TOKENS;
 end;
 
 destructor TRDOpenAIConnection.Destroy;
@@ -169,8 +183,18 @@ begin
   if FApiKey <> Value then
   begin
     FApiKey := Value;
-    FRESTRequestParameter.Value := CBEARER + ' ' + Value;
+    FRESTRequestParameter.Value := cBEARER + ' ' + Value;
   end;
+end;
+
+function TRDOpenAIConnection.StrToFinishReason(AValue: String): TFinishReason;
+begin
+  Result := frNone;
+  AValue := AValue.ToLower;
+  if AValue = 'stop' then
+    Exit(frStop);
+  if AValue = 'length' then
+    Exit(frLength);
 end;
 
 { TRDOpenAIRestClient }
@@ -179,7 +203,7 @@ constructor TRDOpenAIRestClient.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FRestClient := TCustomRESTClient.Create(Self);
-  FRestClient.UserAgent := CDEFAULT_USER_AGENT;
+  FRestClient.UserAgent := cDEFAULT_USER_AGENT;
 end;
 
 destructor TRDOpenAIRestClient.Destroy;
@@ -251,9 +275,10 @@ end;
 constructor TRDOpenAI.Create(AOwner: TComponent);
 begin
   inherited;
-  URL := 'https://api.openai.com/v1';
+  FAsynchron := False;
+  URL := cDEF_URL;
   FQuestionSettings := TQuestion.Create;
-  FTrimAnswerLines := True;
+  FIgnoreReturns := True;
 end;
 
 destructor TRDOpenAI.Destroy;
@@ -269,9 +294,9 @@ procedure TRDOpenAI.DoAnswer(AMessage: string);
 begin
   if assigned(FOnAnswer) then
   begin
-    if FTrimAnswerLines then
+    if FIgnoreReturns then
     begin
-      AMessage := TrimText(AMessage);
+      AMessage := RemoveEmptyLinesWithReturns(AMessage);
     end;
 
     FOnAnswer(Self, AMessage);
@@ -282,9 +307,9 @@ procedure TRDOpenAI.DoError(AMessage: string);
 begin
   if assigned(FOnError) then
   begin
-    if FTrimAnswerLines then
+    if FIgnoreReturns then
     begin
-      AMessage := TrimText(AMessage);
+      AMessage := RemoveEmptyLinesWithReturns(AMessage);
     end;
 
     FOnError(Self, AMessage);
@@ -303,10 +328,6 @@ begin
 end;
 
 procedure TRDOpenAI.RefreshCompletions;
-var
-  LJsonObj: TJSONObject;
-  LElement: Integer;
-  LVersions: TJSONArray;
 begin
   if FApiKey = '' then
     raise Exception.Create('ApiKey not set.');
@@ -320,25 +341,57 @@ begin
   if FRequest = nil then
   begin
     FRequest := TRESTRequest.Create(nil);
+    FRequest.Client := FRestClient;
+    FRequest.SynchronizedEvents := FAsynchron;
   end;
   FRequest.Method := rmPOST;
 
   FRequest.Body.ClearBody;
   var
+    s: string;
   s := FQuestionSettings.AsJson;
 
   FRequest.Params.AddItem.Assign(FRESTRequestParameter);
-  FRESTRequestParameter2.Value := s;
+  FRESTRequestParameter2.Value := s; // Body !
   FRequest.Params.AddItem.Assign(FRESTRequestParameter2);
 
-  FRequest.Client := FRestClient;
   FRequest.Resource := 'completions';
   FRequest.Response := FResponse;
-  try
-    if assigned(FRequestInfoProc) then
-      FRequestInfoProc(FRequest.Resource, gfGet);
 
+  FBusy := True;
+
+  if assigned(FRequestInfoProc) then
+    FRequestInfoProc(FRequest.Resource, gfGet);
+
+  if FAsynchron then
+  begin
+    FRequest.ExecuteAsync(RequestCallback);
+    Exit;
+  end else begin
     FRequest.Execute;
+    RequestCallback;
+  end;
+
+end;
+
+procedure TRDOpenAI.RequestCallback;
+var
+  LJsonObj: TJSONObject;
+  LElement: Integer;
+  LVersions: TJSONArray;
+begin
+  try
+    if FRequest = nil then
+      Exit;
+    if FResponse = nil then
+      Exit;
+
+    if FResponse.StatusCode <> 200 then
+    begin
+      FLastError := FResponse.StatusText;
+      DoError(FLastError);
+      Exit;
+    end;
 
     if assigned(FRequestInfoProc) then
       FRequestInfoProc(FRequest.Resource, gfFinish);
@@ -348,20 +401,41 @@ begin
       Exit;
 
     try
-      FreeAndNil(FCompletions);
-      FCompletions := TJson.JsonToObject<TCompletions>(TJSONObject(LJsonObj), CJSON_OPTIONS);
-      if (FCompletions <> nil) and (FCompletions.Choices.Count > 0) then
-      begin
-        DoAnswer(FCompletions.Choices[0].Text);
+      try
+        FreeAndNil(FCompletions);
+        FCompletions := TJson.JsonToObject<TCompletions>(TJSONObject(LJsonObj), cJSON_OPTIONS);
+        if (FCompletions <> nil) and (FCompletions.Choices.Count > 0) then
+        begin
+          case StrToFinishReason(FCompletions.Choices[0].FinishReason) of
+            frStop, frLength:
+              begin
+                DoAnswer(FCompletions.Choices[0].Text);
+              end;
+          end;
+        end;
+      finally
+        LJsonObj.Free;
       end;
-    finally
-      LJsonObj.Free;
+    except
+      on E: Exception do
+      begin
+        FLastError := E.Message;
+        DoError(FLastError);
+      end;
     end;
-  except
-    on E: Exception do
+  finally
+    FBusy := False;
+  end;
+end;
+
+procedure TRDOpenAI.SetAsynchron(const Value: Boolean);
+begin
+  if FAsynchron <> Value then
+  begin
+    FAsynchron := Value;
+    if FRequest <> nil then
     begin
-      FLastError := E.Message;
-      DoError(FLastError);
+      FRequest.SynchronizedEvents := FAsynchron;
     end;
   end;
 end;
@@ -371,7 +445,7 @@ begin
   BaseURL := Value;
 end;
 
-function TRDOpenAI.TrimText(AText: string): string;
+function TRDOpenAI.RemoveEmptyLinesWithReturns(AText: string): string;
 begin
   Result := AText;
   Result := Result.Replace(#13#10, '', [rfReplaceAll]);
@@ -399,12 +473,7 @@ begin
     end;
     Exit;
   end;
-  FBusy := True;
-  try
-    RefreshCompletions;
-  finally
-    FBusy := False;
-  end;
+  RefreshCompletions;
 end;
 
 procedure TRDChatGpt.SetQuestion(const Value: string);
@@ -414,7 +483,8 @@ begin
     FQuestion := Value;
     FQuestionSettings.Prompt := FQuestion;
     FQuestionSettings.Model := FModel;
-    FQuestionSettings.Temperature := FTemperature
+    FQuestionSettings.Temperature := FTemperature;
+    FQuestionSettings.MaxTokens := FMaxTokens;
   end;
 end;
 

@@ -54,8 +54,10 @@ object Form1: TForm1
     Temperature = 0.100000000000000000
     Model = 'text-davinci-003'
     ProxyPort = 0
+    URL = 'https://api.openai.com/v1'
     OnAnswer = RDChatGpt1Answer
     OnError = RDChatGpt1Error
+    Asynchron = True
     Left = 48
     Top = 72
   end

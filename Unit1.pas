@@ -53,7 +53,6 @@ procedure TForm1.Button1Click(Sender: TObject);
 begin
   RDChatGpt1.Question := Edit1.Text;
   RDChatGpt1.Execute;
-  Edit1.Text := '';
   Edit1.SetFocus;
 end;
 
@@ -83,6 +82,7 @@ end;
 
 procedure TForm1.RDChatGpt1Answer(Sender: TObject; AMessage: string);
 begin
+  Edit1.Text := '';
   Memo1.Lines.Add(AMessage);
 end;
 
