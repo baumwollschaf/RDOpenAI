@@ -112,13 +112,13 @@ type
     function RemoveEmptyLinesWithReturns(AText: string): string;
   protected
     FQuestion: string;
-    FAsynchron: Boolean;
+    FAsynchronous: Boolean;
     FShowQuestionInAnswer: Boolean;
     procedure DoAnswer(AMessage: string); virtual;
     procedure DoError(AMessage: string); virtual;
   strict private
     function GetCompletions: TCompletions;
-    procedure SetAsynchron(const Value: Boolean);
+    procedure SetAsynchronous(const Value: Boolean);
     procedure SetQuestion(const Value: string);
   public
     property Completions: TCompletions read GetCompletions;
@@ -130,7 +130,7 @@ type
     property IgnoreReturns: Boolean read FIgnoreReturns write FIgnoreReturns default True;
     property OnAnswer: TMessageEvent read FOnAnswer write FOnAnswer;
     property OnError: TMessageEvent read FOnError write FOnError;
-    property Asynchron: Boolean read FAsynchron write SetAsynchron default False;
+    property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default False;
     property ShowQuestionInAnswer: Boolean read FShowQuestionInAnswer write FShowQuestionInAnswer default False;
     property Question: string read FQuestion write SetQuestion;
   end;
@@ -273,7 +273,7 @@ end;
 constructor TRDOpenAI.Create(AOwner: TComponent);
 begin
   inherited;
-  FAsynchron := False;
+  FAsynchronous := False;
   FShowQuestionInAnswer := False;
   URL := cDEF_URL;
   FQuestionSettings := TQuestion.Create;
@@ -346,7 +346,7 @@ begin
   begin
     FRequest := TRESTRequest.Create(nil);
     FRequest.Client := FRestClient;
-    FRequest.SynchronizedEvents := FAsynchron;
+    FRequest.SynchronizedEvents := FAsynchronous;
   end;
   FRequest.Method := rmPOST;
 
@@ -367,7 +367,7 @@ begin
   if assigned(FRequestInfoProc) then
     FRequestInfoProc(FRequest.Resource, gfGet);
 
-  if FAsynchron then
+  if FAsynchronous then
   begin
     FRequest.ExecuteAsync(RequestCallback);
     Exit;
@@ -432,14 +432,14 @@ begin
   end;
 end;
 
-procedure TRDOpenAI.SetAsynchron(const Value: Boolean);
+procedure TRDOpenAI.SetAsynchronous(const Value: Boolean);
 begin
-  if FAsynchron <> Value then
+  if FAsynchronous <> Value then
   begin
-    FAsynchron := Value;
+    FAsynchronous := Value;
     if FRequest <> nil then
     begin
-      FRequest.SynchronizedEvents := FAsynchron;
+      FRequest.SynchronizedEvents := FAsynchronous;
     end;
   end;
 end;
