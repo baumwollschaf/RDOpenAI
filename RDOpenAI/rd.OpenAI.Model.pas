@@ -87,7 +87,7 @@ type
     property AcceptCharset: string read GetAcceptCharset write SetAcceptCharset stored True;
     property AcceptEncoding: string read GetAcceptEncoding write SetAcceptEncoding stored True;
     property Proxy: string read GetProxy write SetProxy;
-    property ProxyPort: Integer read GetProxyPort write SetProxyPort;
+    property ProxyPort: Integer read GetProxyPort write SetProxyPort default 0;
   end;
 
   TRDOpenAI = class abstract(TRDOpenAIRestClient)
@@ -111,12 +111,15 @@ type
     procedure RequestCallback;
     function RemoveEmptyLinesWithReturns(AText: string): string;
   protected
+    FQuestion: string;
     FAsynchron: Boolean;
+    FShowQuestionInAnswer: Boolean;
     procedure DoAnswer(AMessage: string); virtual;
     procedure DoError(AMessage: string); virtual;
   strict private
     function GetCompletions: TCompletions;
     procedure SetAsynchron(const Value: Boolean);
+    procedure SetQuestion(const Value: string);
   public
     property Completions: TCompletions read GetCompletions;
     constructor Create(AOwner: TComponent); override;
@@ -128,18 +131,13 @@ type
     property OnAnswer: TMessageEvent read FOnAnswer write FOnAnswer;
     property OnError: TMessageEvent read FOnError write FOnError;
     property Asynchron: Boolean read FAsynchron write SetAsynchron default False;
+    property ShowQuestionInAnswer: Boolean read FShowQuestionInAnswer write FShowQuestionInAnswer default False;
+    property Question: string read FQuestion write SetQuestion;
   end;
 
   TRDChatGpt = class(TRDOpenAI)
-  strict private
-    FQuestion: string;
-    procedure SetQuestion(const Value: string);
   public
-    constructor Create(AOwner: TComponent); override;
-    destructor Destroy; override;
     procedure Execute; override;
-  published
-    property Question: string read FQuestion write SetQuestion;
   end;
 
 procedure Register;
@@ -276,6 +274,7 @@ constructor TRDOpenAI.Create(AOwner: TComponent);
 begin
   inherited;
   FAsynchron := False;
+  FShowQuestionInAnswer := False;
   URL := cDEF_URL;
   FQuestionSettings := TQuestion.Create;
   FIgnoreReturns := True;
@@ -297,6 +296,11 @@ begin
     if FIgnoreReturns then
     begin
       AMessage := RemoveEmptyLinesWithReturns(AMessage);
+    end;
+
+    if FShowQuestionInAnswer then
+    begin
+      AMessage := FQuestion + #13#10 + AMessage;
     end;
 
     FOnAnswer(Self, AMessage);
@@ -455,28 +459,19 @@ end;
 
 { TRDChatGpt }
 
-constructor TRDChatGpt.Create(AOwner: TComponent);
-begin
-  inherited;
-end;
-
-destructor TRDChatGpt.Destroy;
-begin
-  inherited;
-end;
-
 procedure TRDChatGpt.Execute;
 begin
   if FBusy then
   begin
-    asm nop;
-    end;
+{$IFDEF DEBUG}
+    Beep;
+{$ENDIF}
     Exit;
   end;
   RefreshCompletions;
 end;
 
-procedure TRDChatGpt.SetQuestion(const Value: string);
+procedure TRDOpenAI.SetQuestion(const Value: string);
 begin
   if FQuestion <> Value then
   begin
