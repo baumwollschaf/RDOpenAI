@@ -19,11 +19,11 @@ object Form1: TForm1
     Margins.Right = 8.000000000000000000
     Margins.Bottom = 8.000000000000000000
     Size.Width = 464.000000000000000000
-    Size.Height = 225.000000000000000000
+    Size.Height = 170.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 1
     Viewport.Width = 460.000000000000000000
-    Viewport.Height = 221.000000000000000000
+    Viewport.Height = 166.000000000000000000
   end
   object Edit1: TEdit
     Touch.InteractiveGestures = [LongTap, DoubleTap]
@@ -31,7 +31,7 @@ object Form1: TForm1
     TabOrder = 3
     Text = 'Hello, how are you?'
     Position.X = 8.000000000000000000
-    Position.Y = 8.000000000000000000
+    Position.Y = 63.000000000000000000
     Margins.Left = 8.000000000000000000
     Margins.Top = 8.000000000000000000
     Margins.Right = 8.000000000000000000
@@ -51,10 +51,35 @@ object Form1: TForm1
       OnClick = Button1Click
     end
   end
+  object ComboBox1: TComboBox
+    Align = MostTop
+    Margins.Left = 8.000000000000000000
+    Margins.Top = 8.000000000000000000
+    Margins.Right = 8.000000000000000000
+    Position.X = 8.000000000000000000
+    Position.Y = 33.000000000000000000
+    Size.Width = 464.000000000000000000
+    Size.Height = 22.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 5
+    OnChange = ComboBox1Change
+  end
+  object Label1: TLabel
+    Align = MostTop
+    Margins.Left = 8.000000000000000000
+    Margins.Top = 8.000000000000000000
+    Margins.Right = 8.000000000000000000
+    Position.X = 8.000000000000000000
+    Position.Y = 8.000000000000000000
+    Size.Width = 464.000000000000000000
+    Size.Height = 17.000000000000000000
+    Size.PlatformDefault = False
+    Text = 'Models'
+    TabOrder = 6
+  end
   object RDChatGpt1: TRDChatGpt
     Temperature = 0.100000000000000000
     Model = 'text-davinci-003'
-    ProxyPort = 0
     URL = 'https://api.openai.com/v1'
     OnAnswer = RDChatGpt1Answer
     OnError = RDChatGpt1Error

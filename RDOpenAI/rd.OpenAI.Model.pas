@@ -34,7 +34,7 @@ type
   public type
     TFinishReason = (frNone, frStop, frLength);
   private
-    function StrToFinishReason(AValue: String): TFinishReason;
+    function StrToFinishReason(AValue: string): TFinishReason;
   private const
     cBEARER = 'Bearer';
     cDEF_MAX_TOKENS = 2048; // 1024
@@ -101,6 +101,7 @@ type
     FIgnoreReturns: Boolean;
 
     FCompletions: TCompletions;
+    FModels: TModels;
     FRequestInfoProc: TRequestInfoProc;
     function GetURL: string;
     procedure SetURL(const Value: string);
@@ -108,8 +109,14 @@ type
     FBusy: Boolean;
     FQuestionSettings: TQuestion;
     procedure RefreshCompletions;
-    procedure RequestCallback;
+    procedure CompletionCallback;
+    procedure ModelsCallback;
+    function GetModels: TModels;
+    procedure RefreshModels;
     function RemoveEmptyLinesWithReturns(AText: string): string;
+  private
+    procedure CheckApiKey;
+    procedure CheckModel;
   protected
     FQuestion: string;
     FAsynchronous: Boolean;
@@ -122,6 +129,7 @@ type
     procedure SetQuestion(const Value: string);
   public
     property Completions: TCompletions read GetCompletions;
+    property Models: TModels read GetModels;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Execute; virtual; abstract;
@@ -185,7 +193,7 @@ begin
   end;
 end;
 
-function TRDOpenAIConnection.StrToFinishReason(AValue: String): TFinishReason;
+function TRDOpenAIConnection.StrToFinishReason(AValue: string): TFinishReason;
 begin
   Result := frNone;
   AValue := AValue.ToLower;
@@ -270,6 +278,18 @@ begin
   FRestClient.ProxyPort := Value;
 end;
 
+procedure TRDOpenAI.CheckApiKey;
+begin
+  if FApiKey = '' then
+    raise Exception.Create('ApiKey not set.');
+end;
+
+procedure TRDOpenAI.CheckModel;
+begin
+  if FModel = '' then
+    raise Exception.Create('Model not set.');
+end;
+
 constructor TRDOpenAI.Create(AOwner: TComponent);
 begin
   inherited;
@@ -284,6 +304,7 @@ destructor TRDOpenAI.Destroy;
 begin
   FreeAndNil(FQuestionSettings);
   FreeAndNil(FCompletions);
+  FreeAndNil(FModels);
   FreeAndNil(FResponse);
   FreeAndNil(FRequest);
   inherited;
@@ -322,8 +343,20 @@ end;
 
 function TRDOpenAI.GetCompletions: TCompletions;
 begin
-  RefreshCompletions;
+  if FCompletions = nil then
+  begin
+    RefreshCompletions;
+  end;
   Result := FCompletions;
+end;
+
+function TRDOpenAI.GetModels: TModels;
+begin
+  if FModels = nil then
+  begin
+    RefreshModels;
+  end;
+  Result := FModels;
 end;
 
 function TRDOpenAI.GetURL: string;
@@ -333,10 +366,8 @@ end;
 
 procedure TRDOpenAI.RefreshCompletions;
 begin
-  if FApiKey = '' then
-    raise Exception.Create('ApiKey not set.');
-  if FModel = '' then
-    raise Exception.Create('Model not set.');
+  CheckApiKey;
+  CheckModel;
   if FResponse = nil then
   begin
     FResponse := TRESTResponse.Create(nil);
@@ -369,16 +400,59 @@ begin
 
   if FAsynchronous then
   begin
-    FRequest.ExecuteAsync(RequestCallback);
+    FRequest.ExecuteAsync(CompletionCallback);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
-    RequestCallback;
+    CompletionCallback;
   end;
 
 end;
 
-procedure TRDOpenAI.RequestCallback;
+procedure TRDOpenAI.RefreshModels;
+begin
+  CheckApiKey;
+  if FResponse = nil then
+  begin
+    FResponse := TRESTResponse.Create(nil);
+  end;
+  FResponse.RootElement := '';
+  if FRequest = nil then
+  begin
+    FRequest := TRESTRequest.Create(nil);
+    FRequest.Client := FRestClient;
+    FRequest.SynchronizedEvents := FAsynchronous;
+  end;
+  FRequest.Method := rmGET;
+
+  FRequest.Body.ClearBody;
+
+  FRequest.Params.AddItem.Assign(FRESTRequestParameter);
+
+  FRequest.Resource := 'models';
+  FRequest.Response := FResponse;
+
+  FBusy := True;
+
+  if assigned(FRequestInfoProc) then
+    FRequestInfoProc(FRequest.Resource, gfGet);
+
+  if FAsynchronous then
+  begin
+    FRequest.ExecuteAsync(ModelsCallback);
+    Exit;
+  end
+  else
+  begin
+    FRequest.Execute;
+    ModelsCallback;
+  end;
+
+end;
+
+procedure TRDOpenAI.CompletionCallback;
 var
   JsonObj: TJSONObject;
 begin
@@ -423,6 +497,46 @@ begin
       begin
         FLastError := E.Message;
         DoError(FLastError);
+      end;
+    end;
+  finally
+    FBusy := False;
+  end;
+end;
+
+procedure TRDOpenAI.ModelsCallback;
+var
+  JsonObj: TJSONObject;
+begin
+  try
+    if FRequest = nil then
+      Exit;
+    if FResponse = nil then
+      Exit;
+
+    if FResponse.StatusCode <> 200 then
+    begin
+      Exit;
+    end;
+
+    if assigned(FRequestInfoProc) then
+      FRequestInfoProc(FRequest.Resource, gfFinish);
+
+    JsonObj := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(FResponse.Content), 0) as TJSONObject;
+    if JsonObj = nil then
+      Exit;
+
+    try
+      try
+        FreeAndNil(FModels);
+        FModels := TJson.JsonToObject<TModels>(TJSONObject(JsonObj), cJSON_OPTIONS);
+      finally
+        JsonObj.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        FLastError := E.Message;
       end;
     end;
   finally

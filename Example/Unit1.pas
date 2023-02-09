@@ -19,7 +19,8 @@ uses
   FMX.Memo.Types,
   FMX.ScrollBox,
   FMX.Memo,
-  FMX.Edit;
+  FMX.Edit,
+  FMX.ListBox;
 
 type
   TForm1 = class(TForm)
@@ -27,14 +28,18 @@ type
     RDChatGpt1: TRDChatGpt;
     Edit1: TEdit;
     Button1: TButton;
+    ComboBox1: TComboBox;
+    Label1: TLabel;
     procedure Button1Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Edit1Change(Sender: TObject);
     procedure Edit1KeyUp(Sender: TObject; var Key: Word; var KeyChar: Char; Shift: TShiftState);
     procedure RDChatGpt1Error(Sender: TObject; AMessage: string);
     procedure RDChatGpt1Answer(Sender: TObject; AMessage: string);
+    procedure ComboBox1Change(Sender: TObject);
   private
     FApiKey: string;
+    procedure LoadModels(AStrings: TStrings);
   public
     { Public-Deklarationen }
   end;
@@ -54,6 +59,14 @@ begin
   RDChatGpt1.Question := Edit1.Text;
   RDChatGpt1.Execute;
   Edit1.SetFocus;
+end;
+
+procedure TForm1.ComboBox1Change(Sender: TObject);
+begin
+  if (ComboBox1.ItemIndex <> -1) and (ComboBox1.IsFocused) then
+  begin
+    RDChatGpt1.Model := ComboBox1.Items[ComboBox1.ItemIndex];
+  end;
 end;
 
 procedure TForm1.Edit1Change(Sender: TObject);
@@ -77,6 +90,18 @@ begin
   begin
     FApiKey := TFile.ReadAllText('ApiKey.txt');
     RDChatGpt1.ApiKey := FApiKey;
+  end;
+  LoadModels(ComboBox1.Items);
+  ComboBox1.ItemIndex := ComboBox1.Items.IndexOf(RDChatGpt1.Model);
+end;
+
+procedure TForm1.LoadModels(AStrings: TStrings);
+begin
+  Assert(AStrings <> nil);
+  AStrings.Clear;
+  for var i: Integer := 0 to RDChatGpt1.Models.Data.Count - 1 do
+  begin
+    AStrings.Add(RDChatGpt1.Models.Data[i].Root);
   end;
 end;
 
