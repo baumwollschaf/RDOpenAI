@@ -114,6 +114,7 @@ type
     procedure CompletionCallback;
     procedure ModelsCallback;
     function GetModels: TModels;
+    function GetCompletions: TCompletions;
     procedure RefreshModels;
     function RemoveEmptyLinesWithReturns(AText: string): string;
   private
@@ -127,7 +128,6 @@ type
     procedure DoError(AMessage: string); virtual;
     procedure DoModelsLoad(AModels: TModels); virtual;
   strict private
-    function GetCompletions: TCompletions;
     procedure SetAsynchronous(const Value: Boolean);
     procedure SetQuestion(const Value: string);
   public
@@ -358,7 +358,15 @@ function TRDOpenAI.GetCompletions: TCompletions;
 begin
   if FCompletions = nil then
   begin
-    RefreshCompletions;
+    var
+      WasAsync: Boolean := FAsynchronous;
+      // not asynchronous in this case!
+    Asynchronous := False;
+    try
+      RefreshCompletions;
+    finally
+      Asynchronous := WasAsync;
+    end;
   end;
   Result := FCompletions;
 end;
@@ -367,7 +375,15 @@ function TRDOpenAI.GetModels: TModels;
 begin
   if FModels = nil then
   begin
-    RefreshModels;
+    var
+      WasAsync: Boolean := FAsynchronous;
+      // not asynchronous in this case!
+    Asynchronous := False;
+    try
+      RefreshModels;
+    finally
+      Asynchronous := WasAsync;
+    end;
   end;
   Result := FModels;
 end;
@@ -584,14 +600,14 @@ end;
 
 procedure TRDChatGpt.Ask(AQuestion: String);
 begin
-  if FBusy then 
+  if FBusy then
   begin
 {$IFDEF DEBUG}
     Beep;
 {$ENDIF}
     Exit;
   end;
-  if AQuestion <> '' then 
+  if AQuestion <> '' then
   begin
     Question := AQuestion;
   end;
