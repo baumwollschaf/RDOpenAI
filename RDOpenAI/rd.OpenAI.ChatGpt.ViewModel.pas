@@ -29,7 +29,7 @@ type
   TGetOrFinish = (gfGet, gfFinish);
   TRequestInfoProc = procedure(AURL: string; AGetOrFinish: TGetOrFinish) of object;
   TMessageEvent = procedure(Sender: TObject; AMessage: string) of object;
-  TModelsLoadEvent = procedure(Sender: TObject; AModels: TModels) of object;
+  TTypedEvent<T: class> = procedure(Sender: TObject; AType: T) of object;
 
   TRDOpenAIConnection = class abstract(TComponent)
   public type
@@ -98,7 +98,8 @@ type
     FRequest: TRESTRequest;
     FOnAnswer: TMessageEvent;
     FOnError: TMessageEvent;
-    FOnModelsLoaded: TModelsLoadEvent;
+    FOnModelsLoaded: TTypedEvent<TModels>;
+    FOnCompletionsLoaded: TTypedEvent<TCompletions>;
 
     FIgnoreReturns: Boolean;
 
@@ -127,6 +128,7 @@ type
     procedure DoAnswer(AMessage: string); virtual;
     procedure DoError(AMessage: string); virtual;
     procedure DoModelsLoad(AModels: TModels); virtual;
+    procedure DoCompletionsLoad(ACompletions: TCompletions); virtual;
   strict private
     procedure SetAsynchronous(const Value: Boolean);
     procedure SetQuestion(const Value: string);
@@ -140,7 +142,8 @@ type
     property IgnoreReturns: Boolean read FIgnoreReturns write FIgnoreReturns default True;
     property OnAnswer: TMessageEvent read FOnAnswer write FOnAnswer;
     property OnError: TMessageEvent read FOnError write FOnError;
-    property OnModelsLoaded: TModelsLoadEvent read FOnModelsLoaded write FOnModelsLoaded;
+    property OnModelsLoaded: TTypedEvent<TModels> read FOnModelsLoaded write FOnModelsLoaded;
+    property OnCompletionsLoaded: TTypedEvent<TCompletions> read FOnCompletionsLoaded write FOnCompletionsLoaded;
     property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default False;
     property ShowQuestionInAnswer: Boolean read FShowQuestionInAnswer write FShowQuestionInAnswer default False;
     property Question: string read FQuestion write SetQuestion;
@@ -354,6 +357,14 @@ begin
   end;
 end;
 
+procedure TRDOpenAI.DoCompletionsLoad(ACompletions: TCompletions);
+begin
+  if assigned(FOnCompletionsLoaded) then
+  begin
+    FOnCompletionsLoaded(Self, ACompletions);
+  end;
+end;
+
 function TRDOpenAI.GetCompletions: TCompletions;
 begin
   if FCompletions = nil then
@@ -505,6 +516,7 @@ begin
       try
         FreeAndNil(FCompletions);
         FCompletions := TJson.JsonToObject<TCompletions>(TJSONObject(JsonObj), cJSON_OPTIONS);
+        DoCompletionsLoad(FCompletions);
         if (FCompletions <> nil) and (FCompletions.Choices.Count > 0) then
         begin
           case StrToFinishReason(FCompletions.Choices[0].FinishReason) of

@@ -85,6 +85,7 @@ object Form1: TForm1
     OnAnswer = RDChatGpt1Answer
     OnError = RDChatGpt1Error
     OnModelsLoaded = RDChatGpt1ModelsLoaded
+    OnCompletionsLoaded = RDChatGpt1CompletionsLoaded
     Asynchronous = True
     Left = 48
     Top = 72

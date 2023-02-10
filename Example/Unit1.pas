@@ -39,6 +39,7 @@ type
     procedure RDChatGpt1Answer(Sender: TObject; AMessage: string);
     procedure ComboBox1Change(Sender: TObject);
     procedure RDChatGpt1ModelsLoaded(Sender: TObject; AModels: TModels);
+    procedure RDChatGpt1CompletionsLoaded(Sender: TObject; AType: TCompletions);
   private
     FApiKey: string;
   public
@@ -99,6 +100,11 @@ procedure TForm1.RDChatGpt1Answer(Sender: TObject; AMessage: string);
 begin
   Edit1.Text := '';
   Memo1.Lines.Add(AMessage);
+end;
+
+procedure TForm1.RDChatGpt1CompletionsLoaded(Sender: TObject; AType: TCompletions);
+begin
+  Caption := AType.Model; // just testing
 end;
 
 procedure TForm1.RDChatGpt1Error(Sender: TObject; AMessage: string);
