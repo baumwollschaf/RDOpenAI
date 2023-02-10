@@ -58,7 +58,7 @@ uses
 procedure TForm1.Button1Click(Sender: TObject);
 begin
   RDChatGpt1.Question := Edit1.Text;
-  RDChatGpt1.Execute;
+  RDChatGpt1.Ask;
   Edit1.SetFocus;
 end;
 

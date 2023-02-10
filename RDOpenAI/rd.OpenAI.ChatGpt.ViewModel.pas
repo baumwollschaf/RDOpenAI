@@ -135,7 +135,6 @@ type
     property Models: TModels read GetModels;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure Execute; virtual; abstract;
   published
     property URL: string read GetURL write SetURL stored True;
     property IgnoreReturns: Boolean read FIgnoreReturns write FIgnoreReturns default True;
@@ -148,8 +147,9 @@ type
   end;
 
   TRDChatGpt = class(TRDOpenAI)
+  private
   public
-    procedure Execute; override;
+    procedure Ask(AQuestion: String = '');
     procedure LoadModels;
   end;
 
@@ -549,6 +549,7 @@ begin
         FLastError := E.Message;
       end;
     end;
+
   finally
     FBusy := False;
   end;
@@ -581,22 +582,25 @@ end;
 
 { TRDChatGpt }
 
-procedure TRDChatGpt.Execute;
+procedure TRDChatGpt.Ask(AQuestion: String);
 begin
-  if FBusy then
+  if FBusy then 
   begin
 {$IFDEF DEBUG}
     Beep;
 {$ENDIF}
     Exit;
   end;
+  if AQuestion <> '' then 
+  begin
+    Question := AQuestion;
+  end;
   RefreshCompletions;
 end;
 
 procedure TRDOpenAI.SetQuestion(const Value: string);
 begin
-  if FQuestion <> Value then
-  begin
+  if FQuestion <> Value then begin
     FQuestion := Value;
     FQuestionSettings.Prompt := FQuestion;
     FQuestionSettings.Model := FModel;
