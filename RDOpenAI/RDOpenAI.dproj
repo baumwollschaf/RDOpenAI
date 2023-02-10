@@ -152,8 +152,8 @@
         <DCCReference Include="IndyIPClient.dcp"/>
         <DCCReference Include="bindcomp.dcp"/>
         <DCCReference Include="RESTComponents.dcp"/>
-        <DCCReference Include="rd.OpenAI.Model.pas"/>
-        <DCCReference Include="rd.OpenAI.ChatGpt.pas"/>
+        <DCCReference Include="rd.OpenAI.ChatGpt.ViewModel.pas"/>
+        <DCCReference Include="rd.OpenAI.ChatGpt.Model.pas"/>
         <DCCReference Include="Pkg.Json.DTO.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>

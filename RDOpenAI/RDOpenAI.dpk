@@ -41,8 +41,8 @@ requires
   RESTComponents;
 
 contains
-  rd.OpenAI.Model in 'rd.OpenAI.Model.pas',
-  rd.OpenAI.ChatGpt in 'rd.OpenAI.ChatGpt.pas',
+  rd.OpenAI.ChatGpt.ViewModel in 'rd.OpenAI.ChatGpt.ViewModel.pas',
+  rd.OpenAI.ChatGpt.Model in 'rd.OpenAI.ChatGpt.Model.pas',
   Pkg.Json.DTO in 'Pkg.Json.DTO.pas';
 
 end.

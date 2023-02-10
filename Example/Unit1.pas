@@ -13,7 +13,7 @@ uses
   FMX.Forms,
   FMX.Graphics,
   FMX.Dialogs,
-  rd.OpenAI.Model,
+  rd.OpenAI.ChatGpt.ViewModel,
   FMX.Controls.Presentation,
   FMX.StdCtrls,
   FMX.Memo.Types,

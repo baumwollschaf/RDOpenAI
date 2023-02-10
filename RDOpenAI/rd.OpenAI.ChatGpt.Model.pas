@@ -1,4 +1,4 @@
-unit rd.OpenAI.ChatGpt;
+unit rd.OpenAI.ChatGpt.Model;
 
 interface
 

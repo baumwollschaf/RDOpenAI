@@ -1,4 +1,4 @@
-unit rd.OpenAI.Model;
+unit rd.OpenAI.ChatGpt.ViewModel;
 
 interface
 
@@ -20,7 +20,7 @@ uses
   REST.Response.Adapter,
   REST.Types,
   REST.JSON,
-  rd.OpenAI.ChatGpt,
+  rd.OpenAI.ChatGpt.Model,
   System.Generics.Collections;
 {$METHODINFO ON}
 {$M+}
