@@ -14,6 +14,7 @@ uses
   FMX.Graphics,
   FMX.Dialogs,
   rd.OpenAI.ChatGpt.ViewModel,
+  rd.OpenAI.ChatGpt.Model,
   FMX.Controls.Presentation,
   FMX.StdCtrls,
   FMX.Memo.Types,
@@ -37,9 +38,9 @@ type
     procedure RDChatGpt1Error(Sender: TObject; AMessage: string);
     procedure RDChatGpt1Answer(Sender: TObject; AMessage: string);
     procedure ComboBox1Change(Sender: TObject);
+    procedure RDChatGpt1ModelsLoaded(Sender: TObject; AModels: TModels);
   private
     FApiKey: string;
-    procedure LoadModels(AStrings: TStrings);
   public
     { Public-Deklarationen }
   end;
@@ -91,18 +92,7 @@ begin
     FApiKey := TFile.ReadAllText('ApiKey.txt');
     RDChatGpt1.ApiKey := FApiKey;
   end;
-  LoadModels(ComboBox1.Items);
-  ComboBox1.ItemIndex := ComboBox1.Items.IndexOf(RDChatGpt1.Model);
-end;
-
-procedure TForm1.LoadModels(AStrings: TStrings);
-begin
-  Assert(AStrings <> nil);
-  AStrings.Clear;
-  for var i: Integer := 0 to RDChatGpt1.Models.Data.Count - 1 do
-  begin
-    AStrings.Add(RDChatGpt1.Models.Data[i].Root);
-  end;
+  RDChatGpt1.LoadModels;
 end;
 
 procedure TForm1.RDChatGpt1Answer(Sender: TObject; AMessage: string);
@@ -114,6 +104,18 @@ end;
 procedure TForm1.RDChatGpt1Error(Sender: TObject; AMessage: string);
 begin
   Memo1.Lines.Add('Error: ' + AMessage);
+end;
+
+procedure TForm1.RDChatGpt1ModelsLoaded(Sender: TObject; AModels: TModels);
+begin
+  Assert(AModels <> nil);
+  ComboBox1.Items.Clear;
+  for var i: Integer := 0 to AModels.Data.Count - 1 do
+  begin
+    ComboBox1.Items.Add(AModels.Data[i].Root);
+  end;
+  ComboBox1.ItemIndex := ComboBox1.Items.IndexOf(RDChatGpt1.Model);
+  ComboBox1.Enabled := ComboBox1.ItemIndex <> -1;
 end;
 
 end.

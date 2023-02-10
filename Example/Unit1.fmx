@@ -53,6 +53,7 @@ object Form1: TForm1
   end
   object ComboBox1: TComboBox
     Align = MostTop
+    Enabled = False
     Margins.Left = 8.000000000000000000
     Margins.Top = 8.000000000000000000
     Margins.Right = 8.000000000000000000
@@ -83,6 +84,8 @@ object Form1: TForm1
     URL = 'https://api.openai.com/v1'
     OnAnswer = RDChatGpt1Answer
     OnError = RDChatGpt1Error
+    OnModelsLoaded = RDChatGpt1ModelsLoaded
+    Asynchronous = True
     Left = 48
     Top = 72
   end

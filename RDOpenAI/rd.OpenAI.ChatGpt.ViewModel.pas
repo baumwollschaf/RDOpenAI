@@ -29,6 +29,7 @@ type
   TGetOrFinish = (gfGet, gfFinish);
   TRequestInfoProc = procedure(AURL: string; AGetOrFinish: TGetOrFinish) of object;
   TMessageEvent = procedure(Sender: TObject; AMessage: string) of object;
+  TModelsLoadEvent = procedure(Sender: TObject; AModels: TModels) of object;
 
   TRDOpenAIConnection = class abstract(TComponent)
   public type
@@ -97,6 +98,7 @@ type
     FRequest: TRESTRequest;
     FOnAnswer: TMessageEvent;
     FOnError: TMessageEvent;
+    FOnModelsLoaded: TModelsLoadEvent;
 
     FIgnoreReturns: Boolean;
 
@@ -123,6 +125,7 @@ type
     FShowQuestionInAnswer: Boolean;
     procedure DoAnswer(AMessage: string); virtual;
     procedure DoError(AMessage: string); virtual;
+    procedure DoModelsLoad(AModels: TModels); virtual;
   strict private
     function GetCompletions: TCompletions;
     procedure SetAsynchronous(const Value: Boolean);
@@ -138,6 +141,7 @@ type
     property IgnoreReturns: Boolean read FIgnoreReturns write FIgnoreReturns default True;
     property OnAnswer: TMessageEvent read FOnAnswer write FOnAnswer;
     property OnError: TMessageEvent read FOnError write FOnError;
+    property OnModelsLoaded: TModelsLoadEvent read FOnModelsLoaded write FOnModelsLoaded;
     property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default False;
     property ShowQuestionInAnswer: Boolean read FShowQuestionInAnswer write FShowQuestionInAnswer default False;
     property Question: string read FQuestion write SetQuestion;
@@ -146,6 +150,7 @@ type
   TRDChatGpt = class(TRDOpenAI)
   public
     procedure Execute; override;
+    procedure LoadModels;
   end;
 
 procedure Register;
@@ -341,6 +346,14 @@ begin
   end;
 end;
 
+procedure TRDOpenAI.DoModelsLoad(AModels: TModels);
+begin
+  if assigned(FOnModelsLoaded) then
+  begin
+    FOnModelsLoaded(Self, AModels);
+  end;
+end;
+
 function TRDOpenAI.GetCompletions: TCompletions;
 begin
   if FCompletions = nil then
@@ -402,9 +415,7 @@ begin
   begin
     FRequest.ExecuteAsync(CompletionCallback);
     Exit;
-  end
-  else
-  begin
+  end else begin
     FRequest.Execute;
     CompletionCallback;
   end;
@@ -443,9 +454,7 @@ begin
   begin
     FRequest.ExecuteAsync(ModelsCallback);
     Exit;
-  end
-  else
-  begin
+  end else begin
     FRequest.Execute;
     ModelsCallback;
   end;
@@ -530,6 +539,7 @@ begin
       try
         FreeAndNil(FModels);
         FModels := TJson.JsonToObject<TModels>(TJSONObject(JsonObj), cJSON_OPTIONS);
+        DoModelsLoad(FModels);
       finally
         JsonObj.Free;
       end;
@@ -593,6 +603,11 @@ begin
     FQuestionSettings.Temperature := FTemperature;
     FQuestionSettings.MaxTokens := FMaxTokens;
   end;
+end;
+
+procedure TRDChatGpt.LoadModels;
+begin
+  RefreshModels;
 end;
 
 end.
