@@ -26,6 +26,8 @@ uses
 {$M+}
 
 type
+  RDOpenAIException = class(Exception);
+
   TGetOrFinish = (gfGet, gfFinish);
   TRequestInfoProc = procedure(AURL: string; AGetOrFinish: TGetOrFinish) of object;
   TMessageEvent = procedure(Sender: TObject; AMessage: string) of object;
@@ -289,13 +291,13 @@ end;
 procedure TRDOpenAI.CheckApiKey;
 begin
   if FApiKey = '' then
-    raise Exception.Create('ApiKey not set.');
+    raise RDOpenAIException.Create('ApiKey not set.');
 end;
 
 procedure TRDOpenAI.CheckModel;
 begin
   if FModel = '' then
-    raise Exception.Create('Model not set.');
+    raise RDOpenAIException.Create('Model not set.');
 end;
 
 constructor TRDOpenAI.Create(AOwner: TComponent);
