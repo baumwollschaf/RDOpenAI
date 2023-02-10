@@ -206,8 +206,8 @@ begin
   Result := frNone;
   AValue := AValue.ToLower;
   if AValue = 'stop' then
-    Exit(frStop);
-  if AValue = 'length' then
+    Exit(frStop)
+  else if AValue = 'length' then
     Exit(frLength);
 end;
 
