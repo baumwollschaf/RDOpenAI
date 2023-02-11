@@ -154,7 +154,7 @@ type
   TRDChatGpt = class(TRDOpenAI)
   private
   public
-    procedure Ask(AQuestion: String = '');
+    procedure Ask(AQuestion: string = '');
     procedure LoadModels;
   end;
 
@@ -180,7 +180,7 @@ begin
   FRESTRequestParameter2.Kind := pkREQUESTBODY;
   FRESTRequestParameter2.Name := 'AnyBody';
   FRESTRequestParameter2.Value := '';
-  FRESTRequestParameter2.ContentTypeStr := 'application/json';
+  FRESTRequestParameter2.ContentType := 'application/json';
 
   FTemperature := cDEF_TEMP;
   FModel := '';
@@ -444,7 +444,9 @@ begin
   begin
     FRequest.ExecuteAsync(CompletionCallback);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
     CompletionCallback;
   end;
@@ -483,7 +485,9 @@ begin
   begin
     FRequest.ExecuteAsync(ModelsCallback);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
     ModelsCallback;
   end;
@@ -612,7 +616,7 @@ end;
 
 { TRDChatGpt }
 
-procedure TRDChatGpt.Ask(AQuestion: String);
+procedure TRDChatGpt.Ask(AQuestion: string);
 begin
   if FBusy then
   begin
@@ -630,7 +634,8 @@ end;
 
 procedure TRDOpenAI.SetQuestion(const Value: string);
 begin
-  if FQuestion <> Value then begin
+  if FQuestion <> Value then
+  begin
     FQuestion := Value;
     FQuestionSettings.Prompt := FQuestion;
     FQuestionSettings.Model := FModel;
