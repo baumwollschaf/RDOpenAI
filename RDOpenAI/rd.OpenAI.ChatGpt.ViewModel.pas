@@ -609,9 +609,8 @@ end;
 function TRDOpenAI.RemoveEmptyLinesWithReturns(AText: string): string;
 begin
   Result := AText;
-  Result := Result.Replace(#13#10, '', [rfReplaceAll]);
-  Result := Result.Replace(#13, '', [rfReplaceAll]);
-  Result := Result.Replace(#10, '', [rfReplaceAll]);
+  Result := Result.Trim([#13, #10]);
+  Result := Result.Trim([#10, #13]);
 end;
 
 { TRDChatGpt }
