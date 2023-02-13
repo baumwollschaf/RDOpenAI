@@ -139,6 +139,7 @@ type
     property Models: TModels read GetModels;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure Cancel;
   published
     property URL: string read GetURL write SetURL stored True;
     property IgnoreReturns: Boolean read FIgnoreReturns write FIgnoreReturns default True;
@@ -288,6 +289,12 @@ begin
   FRestClient.ProxyPort := Value;
 end;
 
+procedure TRDOpenAI.Cancel;
+begin
+  FBusy := False;
+  FRequest.Cancel;
+end;
+
 procedure TRDOpenAI.CheckApiKey;
 begin
   if FApiKey = '' then
@@ -312,6 +319,7 @@ end;
 
 destructor TRDOpenAI.Destroy;
 begin
+  Cancel;
   FreeAndNil(FQuestionSettings);
   FreeAndNil(FCompletions);
   FreeAndNil(FModels);
@@ -444,9 +452,7 @@ begin
   begin
     FRequest.ExecuteAsync(CompletionCallback);
     Exit;
-  end
-  else
-  begin
+  end else begin
     FRequest.Execute;
     CompletionCallback;
   end;
@@ -485,9 +491,7 @@ begin
   begin
     FRequest.ExecuteAsync(ModelsCallback);
     Exit;
-  end
-  else
-  begin
+  end else begin
     FRequest.Execute;
     ModelsCallback;
   end;
@@ -628,6 +632,7 @@ begin
   begin
     Question := AQuestion;
   end;
+  Cancel;
   RefreshCompletions;
 end;
 
