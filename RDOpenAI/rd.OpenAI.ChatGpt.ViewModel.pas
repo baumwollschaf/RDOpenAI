@@ -179,7 +179,7 @@ type
   public
     procedure Ask(AQuestion: string = '');
     procedure LoadModels;
-    procedure LoadModerations;
+    procedure LoadModerations(AInput: String = '');
   end;
 
 procedure Register;
@@ -776,13 +776,6 @@ end;
 
 procedure TRDChatGpt.Ask(AQuestion: string);
 begin
-  if FBusy then
-  begin
-{$IFDEF DEBUG}
-    Beep;
-{$ENDIF}
-    Exit;
-  end;
   if AQuestion <> '' then
   begin
     Question := AQuestion;
@@ -808,8 +801,13 @@ begin
   RefreshModels;
 end;
 
-procedure TRDChatGpt.LoadModerations;
+procedure TRDChatGpt.LoadModerations(AInput: String );
 begin
+  Cancel;
+  if AInput <> '' then
+  begin
+    FModerationInput.Input := AInput;
+  end;
   RefreshModerations;
 end;
 
