@@ -169,7 +169,8 @@ type
     property OnModelsLoaded: TTypedEvent<TModels> read FOnModelsLoaded write FOnModelsLoaded;
     property OnCompletionsLoaded: TTypedEvent<TCompletions> read FOnCompletionsLoaded write FOnCompletionsLoaded;
     property OnModerationsLoaded: TTypedEvent<TModerations> read FOnModerationsLoaded write FOnModerationsLoaded;
-    property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default False;
+    property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default
+{$IFDEF MSWINDOWS}False{$ELSE}True{$ENDIF};
     property ShowQuestionInAnswer: Boolean read FShowQuestionInAnswer write FShowQuestionInAnswer default False;
     property Question: string read FQuestion write SetQuestion;
   end;
@@ -339,7 +340,11 @@ end;
 constructor TRDOpenAI.Create(AOwner: TComponent);
 begin
   inherited;
+{$IFDEF MSWINDOWS}
   FAsynchronous := False;
+{$ELSE}
+  FAsynchronous := True;
+{$ENDIF}
   FShowQuestionInAnswer := False;
   URL := cDEF_URL;
   FQuestionSettings := TQuestion.Create;
@@ -801,7 +806,7 @@ begin
   RefreshModels;
 end;
 
-procedure TRDChatGpt.LoadModerations(AInput: String );
+procedure TRDChatGpt.LoadModerations(AInput: String);
 begin
   Cancel;
   if AInput <> '' then
