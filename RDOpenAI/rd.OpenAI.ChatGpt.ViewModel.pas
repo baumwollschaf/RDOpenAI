@@ -135,6 +135,7 @@ type
     FModerationInput: TModerationInput;
     procedure CheckApiKey;
     procedure CheckModel;
+    procedure CheckQuestion;
     procedure CheckModerationInput;
   protected
     FQuestion: string;
@@ -337,6 +338,12 @@ begin
     raise RDOpenAIException.Create('ModerationInput.Input not set.');
 end;
 
+procedure TRDOpenAI.CheckQuestion;
+begin
+  if FQuestion = '' then
+    raise RDOpenAIException.Create('Question not set.');
+end;
+
 constructor TRDOpenAI.Create(AOwner: TComponent);
 begin
   inherited;
@@ -480,6 +487,7 @@ procedure TRDOpenAI.RefreshCompletions;
 begin
   CheckApiKey;
   CheckModel;
+  CheckQuestion;
   if FResponse = nil then
   begin
     FResponse := TRESTResponse.Create(nil);
