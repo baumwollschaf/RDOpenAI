@@ -1,7 +1,6 @@
 object Form1: TForm1
   Left = 0
   Top = 0
-  ActiveControl = Edit1
   Caption = 'OpenAI ChatGPT Example'
   ClientHeight = 271
   ClientWidth = 480
@@ -20,37 +19,11 @@ object Form1: TForm1
     Margins.Right = 8.000000000000000000
     Margins.Bottom = 8.000000000000000000
     Size.Width = 464.000000000000000000
-    Size.Height = 170.000000000000000000
+    Size.Height = 130.000000000000000000
     Size.PlatformDefault = False
     TabOrder = 1
     Viewport.Width = 460.000000000000000000
-    Viewport.Height = 166.000000000000000000
-  end
-  object Edit1: TEdit
-    Touch.InteractiveGestures = [LongTap, DoubleTap]
-    Align = Top
-    TabOrder = 3
-    Text = 'Hello, how are you?'
-    Position.X = 8.000000000000000000
-    Position.Y = 63.000000000000000000
-    Margins.Left = 8.000000000000000000
-    Margins.Top = 8.000000000000000000
-    Margins.Right = 8.000000000000000000
-    Margins.Bottom = 8.000000000000000000
-    Size.Width = 464.000000000000000000
-    Size.Height = 22.000000000000000000
-    Size.PlatformDefault = False
-    OnChange = Edit1Change
-    OnTyping = Edit1Change
-    OnKeyUp = Edit1KeyUp
-    object Button1: TButton
-      Align = Right
-      Default = True
-      Position.X = 384.000000000000000000
-      TabOrder = 0
-      Text = 'Ask'
-      OnClick = Button1Click
-    end
+    Viewport.Height = 126.000000000000000000
   end
   object ComboBox1: TComboBox
     Align = MostTop
@@ -63,7 +36,7 @@ object Form1: TForm1
     Size.Width = 464.000000000000000000
     Size.Height = 22.000000000000000000
     Size.PlatformDefault = False
-    TabOrder = 5
+    TabOrder = 4
     OnChange = ComboBox1Change
   end
   object Label1: TLabel
@@ -77,7 +50,63 @@ object Form1: TForm1
     Size.Height = 17.000000000000000000
     Size.PlatformDefault = False
     Text = 'Models'
-    TabOrder = 6
+    TabOrder = 5
+  end
+  object Layout1: TLayout
+    Align = Top
+    Position.Y = 55.000000000000000000
+    Size.Width = 480.000000000000000000
+    Size.Height = 78.000000000000000000
+    Size.PlatformDefault = False
+    TabOrder = 7
+    object Edit1: TEdit
+      Touch.InteractiveGestures = [LongTap, DoubleTap]
+      Align = Top
+      TabOrder = 3
+      Text = 'Hello, how are you?'
+      Position.X = 8.000000000000000000
+      Position.Y = 8.000000000000000000
+      Margins.Left = 8.000000000000000000
+      Margins.Top = 8.000000000000000000
+      Margins.Right = 8.000000000000000000
+      Margins.Bottom = 8.000000000000000000
+      Size.Width = 464.000000000000000000
+      Size.Height = 22.000000000000000000
+      Size.PlatformDefault = False
+      OnChange = Edit1Change
+      OnTyping = Edit1Change
+      OnKeyUp = Edit1KeyUp
+    end
+    object Button1: TButton
+      Align = Right
+      Default = True
+      Margins.Top = 8.000000000000000000
+      Margins.Right = 8.000000000000000000
+      Margins.Bottom = 8.000000000000000000
+      Position.X = 248.000000000000000000
+      Position.Y = 46.000000000000000000
+      Size.Width = 80.000000000000000000
+      Size.Height = 24.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 1
+      Text = 'Ask'
+      OnClick = Button1Click
+    end
+    object Button2: TButton
+      Align = Right
+      Default = True
+      Margins.Top = 8.000000000000000000
+      Margins.Right = 8.000000000000000000
+      Margins.Bottom = 8.000000000000000000
+      Position.X = 336.000000000000000000
+      Position.Y = 46.000000000000000000
+      Size.Width = 136.000000000000000000
+      Size.Height = 24.000000000000000000
+      Size.PlatformDefault = False
+      TabOrder = 0
+      Text = 'Check Moderations'
+      OnClick = Button2Click
+    end
   end
   object RDChatGpt1: TRDChatGpt
     Temperature = 0.100000000000000000
@@ -87,6 +116,7 @@ object Form1: TForm1
     OnError = RDChatGpt1Error
     OnModelsLoaded = RDChatGpt1ModelsLoaded
     OnCompletionsLoaded = RDChatGpt1CompletionsLoaded
+    OnModerationsLoaded = RDChatGpt1ModerationsLoaded
     Asynchronous = True
     Left = 48
     Top = 72

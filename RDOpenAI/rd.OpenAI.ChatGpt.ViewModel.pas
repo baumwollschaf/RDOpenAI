@@ -31,6 +31,8 @@ type
   TGetOrFinish = (gfGet, gfFinish);
   TRequestInfoProc = procedure(AURL: string; AGetOrFinish: TGetOrFinish) of object;
   TMessageEvent = procedure(Sender: TObject; AMessage: string) of object;
+
+  // Returns any Model-Classes
   TTypedEvent<T: class> = procedure(Sender: TObject; AType: T) of object;
 
   TRDOpenAIConnection = class abstract(TComponent)
@@ -102,11 +104,14 @@ type
     FOnError: TMessageEvent;
     FOnModelsLoaded: TTypedEvent<TModels>;
     FOnCompletionsLoaded: TTypedEvent<TCompletions>;
+    FOnModerationsLoaded: TTypedEvent<TModerations>;
 
     FIgnoreReturns: Boolean;
 
     FCompletions: TCompletions;
     FModels: TModels;
+    FModerations: TModerations;
+
     FRequestInfoProc: TRequestInfoProc;
     function GetURL: string;
     procedure SetURL(const Value: string);
@@ -115,14 +120,22 @@ type
     FQuestionSettings: TQuestion;
     procedure RefreshCompletions;
     procedure CompletionCallback;
+
+    procedure RefreshModels;
     procedure ModelsCallback;
+
+    procedure RefreshModerations;
+    procedure ModerationsCallback;
+
     function GetModels: TModels;
     function GetCompletions: TCompletions;
-    procedure RefreshModels;
+    function GetModerations: TModerations;
     function RemoveEmptyLinesWithReturns(AText: string): string;
   private
+    FModerationInput: TModerationInput;
     procedure CheckApiKey;
     procedure CheckModel;
+    procedure CheckModerationInput;
   protected
     FQuestion: string;
     FAsynchronous: Boolean;
@@ -131,12 +144,19 @@ type
     procedure DoError(AMessage: string); virtual;
     procedure DoModelsLoad(AModels: TModels); virtual;
     procedure DoCompletionsLoad(ACompletions: TCompletions); virtual;
+    procedure DoModerationsLoad(AModerations: TModerations); virtual;
   strict private
     procedure SetAsynchronous(const Value: Boolean);
     procedure SetQuestion(const Value: string);
+    procedure SetModerationInput(const Value: TModerationInput);
   public
+{$IFDEF MSWINDOWS}
+    // not async
+    // mobile stuff via events
     property Completions: TCompletions read GetCompletions;
     property Models: TModels read GetModels;
+    property Moderations: TModerations read GetModerations;
+{$ENDIF}
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Cancel;
@@ -147,9 +167,11 @@ type
     property OnError: TMessageEvent read FOnError write FOnError;
     property OnModelsLoaded: TTypedEvent<TModels> read FOnModelsLoaded write FOnModelsLoaded;
     property OnCompletionsLoaded: TTypedEvent<TCompletions> read FOnCompletionsLoaded write FOnCompletionsLoaded;
+    property OnModerationsLoaded: TTypedEvent<TModerations> read FOnModerationsLoaded write FOnModerationsLoaded;
     property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default False;
     property ShowQuestionInAnswer: Boolean read FShowQuestionInAnswer write FShowQuestionInAnswer default False;
     property Question: string read FQuestion write SetQuestion;
+    property ModerationInput: TModerationInput read FModerationInput write SetModerationInput;
   end;
 
   TRDChatGpt = class(TRDOpenAI)
@@ -157,6 +179,7 @@ type
   public
     procedure Ask(AQuestion: string = '');
     procedure LoadModels;
+    procedure LoadModerations;
   end;
 
 procedure Register;
@@ -307,6 +330,12 @@ begin
     raise RDOpenAIException.Create('Model not set.');
 end;
 
+procedure TRDOpenAI.CheckModerationInput;
+begin
+  if FModerationInput.Input = '' then
+    raise RDOpenAIException.Create('ModerationInput.Input not set.');
+end;
+
 constructor TRDOpenAI.Create(AOwner: TComponent);
 begin
   inherited;
@@ -314,6 +343,7 @@ begin
   FShowQuestionInAnswer := False;
   URL := cDEF_URL;
   FQuestionSettings := TQuestion.Create;
+  FModerationInput := TModerationInput.Create;
   FIgnoreReturns := True;
 end;
 
@@ -322,7 +352,9 @@ begin
   Cancel;
   FreeAndNil(FQuestionSettings);
   FreeAndNil(FCompletions);
+  FreeAndNil(FModerationInput);
   FreeAndNil(FModels);
+  FreeAndNil(FModerations);
   FreeAndNil(FResponse);
   FreeAndNil(FRequest);
   inherited;
@@ -367,6 +399,14 @@ begin
   end;
 end;
 
+procedure TRDOpenAI.DoModerationsLoad(AModerations: TModerations);
+begin
+  if assigned(FOnModerationsLoaded) then
+  begin
+    FOnModerationsLoaded(Self, AModerations);
+  end;
+end;
+
 procedure TRDOpenAI.DoCompletionsLoad(ACompletions: TCompletions);
 begin
   if assigned(FOnCompletionsLoaded) then
@@ -407,6 +447,23 @@ begin
     end;
   end;
   Result := FModels;
+end;
+
+function TRDOpenAI.GetModerations: TModerations;
+begin
+  if FModerations = nil then
+  begin
+    var
+      WasAsync: Boolean := FAsynchronous;
+      // not asynchronous in this case!
+    Asynchronous := False;
+    try
+      RefreshModerations;
+    finally
+      Asynchronous := WasAsync;
+    end;
+  end;
+  Result := FModerations;
 end;
 
 function TRDOpenAI.GetURL: string;
@@ -455,6 +512,52 @@ begin
   end else begin
     FRequest.Execute;
     CompletionCallback;
+  end;
+
+end;
+
+procedure TRDOpenAI.RefreshModerations;
+begin
+  CheckApiKey;
+  CheckModel;
+  CheckModerationInput;
+  if FResponse = nil then
+  begin
+    FResponse := TRESTResponse.Create(nil);
+  end;
+  FResponse.RootElement := '';
+  if FRequest = nil then
+  begin
+    FRequest := TRESTRequest.Create(nil);
+    FRequest.Client := FRestClient;
+    FRequest.SynchronizedEvents := FAsynchronous;
+  end;
+  FRequest.Method := rmPOST;
+
+  FRequest.Body.ClearBody;
+  var
+    s: string;
+  s := FModerationInput.AsJson;
+
+  FRequest.Params.AddItem.Assign(FRESTRequestParameter);
+  FRESTRequestParameter2.Value := s; // Body !
+  FRequest.Params.AddItem.Assign(FRESTRequestParameter2);
+
+  FRequest.Resource := 'moderations';
+  FRequest.Response := FResponse;
+
+  FBusy := True;
+
+  if assigned(FRequestInfoProc) then
+    FRequestInfoProc(FRequest.Resource, gfGet);
+
+  if FAsynchronous then
+  begin
+    FRequest.ExecuteAsync(ModerationsCallback);
+    Exit;
+  end else begin
+    FRequest.Execute;
+    ModerationsCallback;
   end;
 
 end;
@@ -563,6 +666,8 @@ begin
 
     if FResponse.StatusCode <> 200 then
     begin
+      FLastError := FResponse.StatusText;
+      DoError(FLastError);
       Exit;
     end;
 
@@ -585,9 +690,54 @@ begin
       on E: Exception do
       begin
         FLastError := E.Message;
+        DoError(FLastError);
       end;
     end;
 
+  finally
+    FBusy := False;
+  end;
+end;
+
+procedure TRDOpenAI.ModerationsCallback;
+var
+  JsonObj: TJSONObject;
+begin
+  try
+    if FRequest = nil then
+      Exit;
+    if FResponse = nil then
+      Exit;
+
+    if FResponse.StatusCode <> 200 then
+    begin
+      FLastError := FResponse.StatusText;
+      DoError(FLastError);
+      Exit;
+    end;
+
+    if assigned(FRequestInfoProc) then
+      FRequestInfoProc(FRequest.Resource, gfFinish);
+
+    JsonObj := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(FResponse.Content), 0) as TJSONObject;
+    if JsonObj = nil then
+      Exit;
+
+    try
+      try
+        FreeAndNil(FModerations);
+        FModerations := TJson.JsonToObject<TModerations>(TJSONObject(JsonObj), cJSON_OPTIONS);
+        DoModerationsLoad(FModerations);
+      finally
+        JsonObj.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        FLastError := E.Message;
+        DoError(FLastError);
+      end;
+    end;
   finally
     FBusy := False;
   end;
@@ -603,6 +753,11 @@ begin
       FRequest.SynchronizedEvents := FAsynchronous;
     end;
   end;
+end;
+
+procedure TRDOpenAI.SetModerationInput(const Value: TModerationInput);
+begin
+  FModerationInput := Value;
 end;
 
 procedure TRDOpenAI.SetURL(const Value: string);
@@ -651,6 +806,11 @@ end;
 procedure TRDChatGpt.LoadModels;
 begin
   RefreshModels;
+end;
+
+procedure TRDChatGpt.LoadModerations;
+begin
+  RefreshModerations;
 end;
 
 end.

@@ -107,6 +107,7 @@
         <Icns_MainIcns>$(BDS)\bin\delphi_PROJECTICNS.icns</Icns_MainIcns>
         <SanitizedProjectName>Project1</SanitizedProjectName>
         <DCC_UnitSearchPath>..\RDOpenAI;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_Define>baumwollschaf;$(DCC_Define)</DCC_Define>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Android)'!=''">
         <DCC_UsePackage>fmx;DbxCommonDriver;bindengine;IndyIPCommon;emsclient;IndyProtocols;dbxcds;FmxTeeUI;FireDACSqliteDriver;DbxClientDriver;soapmidas;dbexpress;inet;FireDACDBXDriver;CustomIPTransport;IndySystem;ibxbindings;FireDACCommon;bindcompdbx;rtl;DBXSqliteDriver;DataSnapFireDAC;FireDAC;xmlrtl;ibxpress;dsnap;DataSnapNativeClient;FireDACCommonDriver;IndyIPClient;bindcompfmx;ibmonitor;fmxFireDAC;DataSnapCommon;fmxase;dbrtl;DBXInterBaseDriver;bindcomp;IndyCore;RESTBackendComponents;RESTComponents;IndyIPServer;dsnapxml;DataSnapClient;DataSnapProviderClient;emsclientfiredac;FireDACDSDriver;tethering;CloudService;FMXTee;soaprtl;soapserver;FireDACIBDriver;$(DCC_UsePackage)</DCC_UsePackage>
@@ -275,9 +276,11 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
+        <DCCReference Include="..\..\Chatti\Project\Extern.ApiKey.pas">
+            <Form>$ENDIF</Form>
+        </DCCReference>
         <DCCReference Include="Unit1.pas">
             <Form>Form1</Form>
-            <FormType>fmx</FormType>
         </DCCReference>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
@@ -320,7 +323,7 @@
                         <Overwrite>true</Overwrite>
                     </Platform>
                 </DeployFile>
-                <DeployFile LocalName="Win32\Debug\Project1.exe" Configuration="Debug" Class="ProjectOutput">
+                <DeployFile LocalName="Project1.exe" Configuration="Debug" Class="ProjectOutput">
                     <Platform Name="Win32">
                         <RemoteName>Project1.exe</RemoteName>
                         <Overwrite>true</Overwrite>

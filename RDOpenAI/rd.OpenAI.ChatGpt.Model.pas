@@ -154,6 +154,93 @@ type
     destructor Destroy; override;
   end;
 
+  TCategoryScores = class
+  private
+    FHate: Double;
+    [JSONName('hate/threatening')]
+    FHateThreatening: Double;
+    [JSONName('self-harm')]
+    FSelfHarm: Double;
+    FSexual: Double;
+    [JSONName('sexual/minors')]
+    FSexualMinors: Double;
+    FViolence: Double;
+    [JSONName('violence/graphic')]
+    FViolenceGraphic: Double;
+  published
+    property Hate: Double read FHate write FHate;
+    property HateThreatening: Double read FHateThreatening write FHateThreatening;
+    property SelfHarm: Double read FSelfHarm write FSelfHarm;
+    property Sexual: Double read FSexual write FSexual;
+    property SexualMinors: Double read FSexualMinors write FSexualMinors;
+    property Violence: Double read FViolence write FViolence;
+    property ViolenceGraphic: Double read FViolenceGraphic write FViolenceGraphic;
+  end;
+
+  TCategories = class
+  private
+    FHate: Boolean;
+    [JSONName('hate/threatening')]
+    FHateThreatening: Boolean;
+    [JSONName('self-harm')]
+    FSelfHarm: Boolean;
+    FSexual: Boolean;
+    [JSONName('sexual/minors')]
+    FSexualMinors: Boolean;
+    FViolence: Boolean;
+    [JSONName('violence/graphic')]
+    FViolenceGraphic: Boolean;
+  published
+    property Hate: Boolean read FHate write FHate;
+    property HateThreatening: Boolean read FHateThreatening write FHateThreatening;
+    property SelfHarm: Boolean read FSelfHarm write FSelfHarm;
+    property Sexual: Boolean read FSexual write FSexual;
+    property SexualMinors: Boolean read FSexualMinors write FSexualMinors;
+    property Violence: Boolean read FViolence write FViolence;
+    property ViolenceGraphic: Boolean read FViolenceGraphic write FViolenceGraphic;
+  end;
+
+  TResults = class
+  private
+    FCategories: TCategories;
+    [JSONName('category_scores')]
+    FCategoryScores: TCategoryScores;
+    FFlagged: Boolean;
+  published
+    property Categories: TCategories read FCategories;
+    property CategoryScores: TCategoryScores read FCategoryScores;
+    property Flagged: Boolean read FFlagged write FFlagged;
+  public
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+  TModerations = class(TJsonDTO)
+  private
+    FId: string;
+    FModel: string;
+    [JSONName('results'), JSONMarshalled(False)]
+    FResultsArray: TArray<TResults>;
+    [GenericListReflect]
+    FResults: TObjectList<TResults>;
+    function GetResults: TObjectList<TResults>;
+  protected
+    function GetAsJson: string; override;
+  published
+    property Id: string read FId write FId;
+    property Model: string read FModel write FModel;
+    property Results: TObjectList<TResults> read GetResults;
+  public
+    destructor Destroy; override;
+  end;
+
+  TModerationInput = class(TJsonDTO)
+  private
+    FInput: string;
+  published
+    property Input: string read FInput write FInput;
+  end;
+
 implementation
 
 constructor TCompletions.Create;
@@ -213,6 +300,41 @@ end;
 function TModels.GetAsJson: string;
 begin
   RefreshArray<TData>(FData, FDataArray);
+  Result := inherited;
+end;
+
+{ TModerations }
+
+constructor TResults.Create;
+begin
+  inherited;
+  FCategories := TCategories.Create;
+  FCategoryScores := TCategoryScores.Create;
+end;
+
+destructor TResults.Destroy;
+begin
+  FCategories.Free;
+  FCategoryScores.Free;
+  inherited;
+end;
+
+{ TRoot }
+
+destructor TModerations.Destroy;
+begin
+  GetResults.Free;
+  inherited;
+end;
+
+function TModerations.GetResults: TObjectList<TResults>;
+begin
+  Result := ObjectList<TResults>(FResults, FResultsArray);
+end;
+
+function TModerations.GetAsJson: string;
+begin
+  RefreshArray<TResults>(FResults, FResultsArray);
   Result := inherited;
 end;
 

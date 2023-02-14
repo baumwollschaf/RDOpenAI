@@ -21,16 +21,26 @@ uses
   FMX.ScrollBox,
   FMX.Memo,
   FMX.Edit,
-  FMX.ListBox;
+  System.Json,
+  Rest.Json,
+  System.Generics.Collections,
+  Rest.JsonReflect,
+{$IFDEF baumwollschaf}
+  Extern.ApiKey,
+{$ENDIF}
+  FMX.ListBox,
+  FMX.Layouts;
 
 type
   TForm1 = class(TForm)
     Memo1: TMemo;
     RDChatGpt1: TRDChatGpt;
-    Edit1: TEdit;
-    Button1: TButton;
     ComboBox1: TComboBox;
     Label1: TLabel;
+    Layout1: TLayout;
+    Edit1: TEdit;
+    Button1: TButton;
+    Button2: TButton;
     procedure Button1Click(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Edit1Change(Sender: TObject);
@@ -40,6 +50,8 @@ type
     procedure ComboBox1Change(Sender: TObject);
     procedure RDChatGpt1ModelsLoaded(Sender: TObject; AModels: TModels);
     procedure RDChatGpt1CompletionsLoaded(Sender: TObject; AType: TCompletions);
+    procedure Button2Click(Sender: TObject);
+    procedure RDChatGpt1ModerationsLoaded(Sender: TObject; AType: TModerations);
   private
     FApiKey: string;
   public
@@ -60,6 +72,13 @@ procedure TForm1.Button1Click(Sender: TObject);
 begin
   RDChatGpt1.Question := Edit1.Text;
   RDChatGpt1.Ask;
+  Edit1.SetFocus;
+end;
+
+procedure TForm1.Button2Click(Sender: TObject);
+begin
+  RDChatGpt1.ModerationInput.Input := Edit1.Text;
+  RDChatGpt1.LoadModerations;
   Edit1.SetFocus;
 end;
 
@@ -88,11 +107,9 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   ReportMemoryLeaksOnShutdown := True;
-  if TFile.Exists('ApiKey.txt') then
-  begin
-    FApiKey := TFile.ReadAllText('ApiKey.txt');
-    RDChatGpt1.ApiKey := FApiKey;
-  end;
+{$IFDEF baumwollschaf}
+  RDChatGpt1.ApiKey := S(TExternalStuff.ApiKey);
+{$ENDIF}
   RDChatGpt1.LoadModels;
 end;
 
@@ -122,6 +139,37 @@ begin
   end;
   ComboBox1.ItemIndex := ComboBox1.Items.IndexOf(RDChatGpt1.Model);
   ComboBox1.Enabled := ComboBox1.ItemIndex <> -1;
+end;
+
+procedure TForm1.RDChatGpt1ModerationsLoaded(Sender: TObject; AType: TModerations);
+begin
+  if AType <> nil then
+  begin
+    if AType.Results.Count > 0 then
+    begin
+      // example of how to use
+      if AType.Results[0].Categories.Hate then
+      begin
+        Memo1.Lines.Add('Hate included');
+      end else begin
+        Memo1.Lines.Add('No Hate');
+      end;
+
+      if AType.Results[0].Categories.HateThreatening then
+      begin
+        Memo1.Lines.Add('HateThreatening included');
+      end else begin
+        Memo1.Lines.Add('No HateThreatening');
+      end;
+
+      if AType.Results[0].Categories.Sexual then
+      begin
+        Memo1.Lines.Add('Sexual included');
+      end else begin
+        Memo1.Lines.Add('No Sexual');
+      end;
+    end;
+  end;
 end;
 
 end.
