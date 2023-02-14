@@ -70,6 +70,7 @@ uses
 
 procedure TForm1.Button1Click(Sender: TObject);
 begin
+  RDChatGpt1.Cancel;
   RDChatGpt1.Question := Edit1.Text;
   RDChatGpt1.Ask;
   Edit1.SetFocus;
@@ -77,6 +78,7 @@ end;
 
 procedure TForm1.Button2Click(Sender: TObject);
 begin
+  RDChatGpt1.Cancel;
   RDChatGpt1.ModerationInput.Input := Edit1.Text;
   RDChatGpt1.LoadModerations;
   Edit1.SetFocus;

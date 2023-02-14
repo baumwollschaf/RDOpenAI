@@ -157,6 +157,7 @@ type
     property Models: TModels read GetModels;
     property Moderations: TModerations read GetModerations;
 {$ENDIF}
+    property ModerationInput: TModerationInput read FModerationInput write SetModerationInput;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Cancel;
@@ -171,7 +172,6 @@ type
     property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default False;
     property ShowQuestionInAnswer: Boolean read FShowQuestionInAnswer write FShowQuestionInAnswer default False;
     property Question: string read FQuestion write SetQuestion;
-    property ModerationInput: TModerationInput read FModerationInput write SetModerationInput;
   end;
 
   TRDChatGpt = class(TRDOpenAI)
