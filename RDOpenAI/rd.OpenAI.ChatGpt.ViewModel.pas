@@ -164,6 +164,7 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Cancel;
+    procedure Assign(Source: TPersistent); override;
   published
     property URL: string read GetURL write SetURL stored True;
     property IgnoreReturns: Boolean read FIgnoreReturns write FIgnoreReturns default True;
@@ -315,6 +316,27 @@ end;
 procedure TRDOpenAIRestClient.SetProxyPort(const Value: Integer);
 begin
   FRestClient.ProxyPort := Value;
+end;
+
+procedure TRDOpenAI.Assign(Source: TPersistent);
+begin
+  inherited Assign(Source);
+  var
+    OpenAI: TRDOpenAI := nil;
+  if Source is TRDOpenAI then
+    OpenAI := TRDOpenAI(Source);
+
+  if OpenAI = nil then
+    Exit;
+
+  Self.Asynchronous := OpenAI.FAsynchronous;
+  Self.URL := OpenAI.URL;
+  Self.Model := OpenAI.Model;
+  Self.Temperature := OpenAI.Temperature;
+  Self.MaxTokens := OpenAI.MaxTokens;
+  Self.TimeOutSeconds := OpenAI.TimeOutSeconds;
+  Self.IgnoreReturns := OpenAI.IgnoreReturns;
+  Self.Question := OpenAI.Question;
 end;
 
 procedure TRDOpenAI.Cancel;
