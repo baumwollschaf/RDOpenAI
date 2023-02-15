@@ -133,10 +133,12 @@ type
     function RemoveEmptyLinesWithReturns(AText: string): string;
   private
     FModerationInput: TModerationInput;
+    FTimeOutSeconds: Integer;
     procedure CheckApiKey;
     procedure CheckModel;
     procedure CheckQuestion;
     procedure CheckModerationInput;
+    procedure SetTimeOutSeconds(const Value: Integer);
   protected
     FQuestion: string;
     FAsynchronous: Boolean;
@@ -172,6 +174,7 @@ type
     property OnModerationsLoaded: TTypedEvent<TModerations> read FOnModerationsLoaded write FOnModerationsLoaded;
     property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default
 {$IFDEF MSWINDOWS}False{$ELSE}True{$ENDIF};
+    property TimeOutSeconds: Integer read FTimeOutSeconds write SetTimeOutSeconds default 30;
     property ShowQuestionInAnswer: Boolean read FShowQuestionInAnswer write FShowQuestionInAnswer default False;
     property Question: string read FQuestion write SetQuestion;
   end;
@@ -352,6 +355,7 @@ begin
 {$ELSE}
   FAsynchronous := True;
 {$ENDIF}
+  FTimeOutSeconds := 30; // in seconds
   FShowQuestionInAnswer := False;
   URL := cDEF_URL;
   FQuestionSettings := TQuestion.Create;
@@ -498,6 +502,7 @@ begin
     FRequest := TRESTRequest.Create(nil);
     FRequest.Client := FRestClient;
     FRequest.SynchronizedEvents := FAsynchronous;
+    FRequest.Timeout := FTimeOutSeconds * 1000;
   end;
   FRequest.Method := rmPOST;
 
@@ -544,6 +549,7 @@ begin
     FRequest := TRESTRequest.Create(nil);
     FRequest.Client := FRestClient;
     FRequest.SynchronizedEvents := FAsynchronous;
+    FRequest.Timeout := FTimeOutSeconds * 1000;
   end;
   FRequest.Method := rmPOST;
 
@@ -588,6 +594,7 @@ begin
     FRequest := TRESTRequest.Create(nil);
     FRequest.Client := FRestClient;
     FRequest.SynchronizedEvents := FAsynchronous;
+    FRequest.Timeout := FTimeOutSeconds * 1000;
   end;
   FRequest.Method := rmGET;
 
@@ -806,6 +813,18 @@ begin
     FQuestionSettings.Model := FModel;
     FQuestionSettings.Temperature := FTemperature;
     FQuestionSettings.MaxTokens := FMaxTokens;
+  end;
+end;
+
+procedure TRDOpenAI.SetTimeOutSeconds(const Value: Integer);
+begin
+  if FTimeOutSeconds <> Value then
+  begin
+    FTimeOutSeconds := Value;
+    if FRequest <> nil then
+    begin
+      FRequest.Timeout := FTimeOutSeconds * 1000;
+    end;
   end;
 end;
 
