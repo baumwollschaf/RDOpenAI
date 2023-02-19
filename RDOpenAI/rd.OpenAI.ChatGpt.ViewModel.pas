@@ -185,7 +185,7 @@ type
   public
     procedure Ask(AQuestion: string = '');
     procedure LoadModels;
-    procedure LoadModerations(AInput: String = '');
+    procedure LoadModerations(AInput: string = '');
   end;
 
 procedure Register;
@@ -342,7 +342,10 @@ end;
 procedure TRDOpenAI.Cancel;
 begin
   FBusy := False;
-  FRequest.Cancel;
+  if FRequest <> nil then
+  begin
+    FRequest.Cancel;
+  end;
 end;
 
 procedure TRDOpenAI.CheckApiKey;
@@ -549,7 +552,9 @@ begin
   begin
     FRequest.ExecuteAsync(CompletionCallback);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
     CompletionCallback;
   end;
@@ -596,7 +601,9 @@ begin
   begin
     FRequest.ExecuteAsync(ModerationsCallback);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
     ModerationsCallback;
   end;
@@ -636,7 +643,9 @@ begin
   begin
     FRequest.ExecuteAsync(ModelsCallback);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
     ModelsCallback;
   end;
@@ -855,7 +864,7 @@ begin
   RefreshModels;
 end;
 
-procedure TRDChatGpt.LoadModerations(AInput: String);
+procedure TRDChatGpt.LoadModerations(AInput: string);
 begin
   Cancel;
   if AInput <> '' then
