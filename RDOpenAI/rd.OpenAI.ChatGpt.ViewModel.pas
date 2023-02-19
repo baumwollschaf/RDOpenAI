@@ -113,6 +113,8 @@ type
     FModerations: TModerations;
 
     FRequestInfoProc: TRequestInfoProc;
+    procedure ProtocolError(Sender: TCustomRESTRequest);
+    procedure ProtocolErrorClient(Sender: TCustomRESTClient);
     function GetURL: string;
     procedure SetURL(const Value: string);
   protected
@@ -375,6 +377,7 @@ end;
 constructor TRDOpenAI.Create(AOwner: TComponent);
 begin
   inherited;
+  FRestClient.OnHTTPProtocolError := ProtocolErrorClient;
 {$IFDEF MSWINDOWS}
   FAsynchronous := False;
 {$ELSE}
@@ -525,6 +528,7 @@ begin
   if FRequest = nil then
   begin
     FRequest := TRESTRequest.Create(nil);
+    FRequest.OnHTTPProtocolError := ProtocolError;
     FRequest.Client := FRestClient;
     FRequest.SynchronizedEvents := FAsynchronous;
     FRequest.Timeout := FTimeOutSeconds * 1000;
@@ -574,6 +578,7 @@ begin
   if FRequest = nil then
   begin
     FRequest := TRESTRequest.Create(nil);
+    FRequest.OnHTTPProtocolError := ProtocolError;
     FRequest.Client := FRestClient;
     FRequest.SynchronizedEvents := FAsynchronous;
     FRequest.Timeout := FTimeOutSeconds * 1000;
@@ -621,6 +626,7 @@ begin
   if FRequest = nil then
   begin
     FRequest := TRESTRequest.Create(nil);
+    FRequest.OnHTTPProtocolError := ProtocolError;
     FRequest.Client := FRestClient;
     FRequest.SynchronizedEvents := FAsynchronous;
     FRequest.Timeout := FTimeOutSeconds * 1000;
@@ -792,6 +798,16 @@ begin
   finally
     FBusy := False;
   end;
+end;
+
+procedure TRDOpenAI.ProtocolError(Sender: TCustomRESTRequest);
+begin
+  DoError(FLastError);
+end;
+
+procedure TRDOpenAI.ProtocolErrorClient(Sender: TCustomRESTClient);
+begin
+  DoError(FLastError);
 end;
 
 procedure TRDOpenAI.SetAsynchronous(const Value: Boolean);
