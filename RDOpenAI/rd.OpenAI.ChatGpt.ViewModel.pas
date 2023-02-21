@@ -150,6 +150,8 @@ type
     procedure DoModelsLoad(AModels: TModels); virtual;
     procedure DoCompletionsLoad(ACompletions: TCompletions); virtual;
     procedure DoModerationsLoad(AModerations: TModerations); virtual;
+
+    procedure DoCompletionHandlerWithError(AObject: TObject);
   strict private
     procedure SetAsynchronous(const Value: Boolean);
     procedure SetQuestion(const Value: string);
@@ -451,6 +453,15 @@ begin
   end;
 end;
 
+procedure TRDOpenAI.DoCompletionHandlerWithError(AObject: TObject);
+begin
+  try
+    DoError(Exception(AObject).Message);
+  except
+    ;
+  end;
+end;
+
 procedure TRDOpenAI.DoCompletionsLoad(ACompletions: TCompletions);
 begin
   if assigned(FOnCompletionsLoaded) then
@@ -554,11 +565,9 @@ begin
 
   if FAsynchronous then
   begin
-    FRequest.ExecuteAsync(CompletionCallback);
+    FRequest.ExecuteAsync(CompletionCallback, True, True, DoCompletionHandlerWithError);
     Exit;
-  end
-  else
-  begin
+  end else begin
     FRequest.Execute;
     CompletionCallback;
   end;
@@ -604,11 +613,9 @@ begin
 
   if FAsynchronous then
   begin
-    FRequest.ExecuteAsync(ModerationsCallback);
+    FRequest.ExecuteAsync(ModerationsCallback, True, True, DoCompletionHandlerWithError);
     Exit;
-  end
-  else
-  begin
+  end else begin
     FRequest.Execute;
     ModerationsCallback;
   end;
@@ -647,11 +654,9 @@ begin
 
   if FAsynchronous then
   begin
-    FRequest.ExecuteAsync(ModelsCallback);
+    FRequest.ExecuteAsync(ModelsCallback, True, True, DoCompletionHandlerWithError);
     Exit;
-  end
-  else
-  begin
+  end else begin
     FRequest.Execute;
     ModelsCallback;
   end;
