@@ -104,6 +104,7 @@ type
     FOnError: TMessageEvent;
     FOnModelsLoaded: TTypedEvent<TModels>;
     FOnCompletionsLoaded: TTypedEvent<TCompletions>;
+    FOnInstrCompletionsLoaded: TTypedEvent<TCompletions>;
     FOnModerationsLoaded: TTypedEvent<TModerations>;
 
     FIgnoreReturns: Boolean;
@@ -111,6 +112,7 @@ type
     FCompletions: TCompletions;
     FModels: TModels;
     FModerations: TModerations;
+    FInstrCompletions: TCompletions;
 
     FRequestInfoProc: TRequestInfoProc;
     procedure ProtocolError(Sender: TCustomRESTRequest);
@@ -120,8 +122,11 @@ type
   protected
     FBusy: Boolean;
     FQuestionSettings: TQuestion;
+    FInstructionSettings: TInstruction;
     procedure RefreshCompletions;
+    procedure RefreshInstrCompletions;
     procedure CompletionCallback;
+    procedure InstrCompletionCallback;
 
     procedure RefreshModels;
     procedure ModelsCallback;
@@ -131,6 +136,7 @@ type
 
     function GetModels: TModels;
     function GetCompletions: TCompletions;
+    function GetInstrCompletions: TCompletions;
     function GetModerations: TModerations;
     function RemoveEmptyLinesWithReturns(AText: string): string;
   private
@@ -139,6 +145,7 @@ type
     procedure CheckApiKey;
     procedure CheckModel;
     procedure CheckQuestion;
+    procedure CheckInstruction;
     procedure CheckModerationInput;
     procedure SetTimeOutSeconds(const Value: Integer);
   protected
@@ -149,6 +156,7 @@ type
     procedure DoError(AMessage: string); virtual;
     procedure DoModelsLoad(AModels: TModels); virtual;
     procedure DoCompletionsLoad(ACompletions: TCompletions); virtual;
+    procedure DoInstrCompletionsLoad(ACompletions: TCompletions); virtual;
     procedure DoModerationsLoad(AModerations: TModerations); virtual;
 
     procedure DoCompletionHandlerWithError(AObject: TObject);
@@ -160,6 +168,7 @@ type
 {$IFDEF MSWINDOWS}
     // not async
     // mobile stuff via events
+    property InstrCompletions: TCompletions read GetInstrCompletions;
     property Completions: TCompletions read GetCompletions;
     property Models: TModels read GetModels;
     property Moderations: TModerations read GetModerations;
@@ -176,6 +185,7 @@ type
     property OnError: TMessageEvent read FOnError write FOnError;
     property OnModelsLoaded: TTypedEvent<TModels> read FOnModelsLoaded write FOnModelsLoaded;
     property OnCompletionsLoaded: TTypedEvent<TCompletions> read FOnCompletionsLoaded write FOnCompletionsLoaded;
+    property OnInstrCompletionsLoaded: TTypedEvent<TCompletions> read FOnInstrCompletionsLoaded write FOnInstrCompletionsLoaded;
     property OnModerationsLoaded: TTypedEvent<TModerations> read FOnModerationsLoaded write FOnModerationsLoaded;
     property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default
 {$IFDEF MSWINDOWS}False{$ELSE}True{$ENDIF};
@@ -188,6 +198,7 @@ type
   private
   public
     procedure Ask(AQuestion: string = '');
+    procedure Instruct(AInput: String; AInstruction: String);
     procedure LoadModels;
     procedure LoadModerations(AInput: string = '');
   end;
@@ -376,6 +387,12 @@ begin
     raise RDOpenAIException.Create('Question not set.');
 end;
 
+procedure TRDOpenAI.CheckInstruction;
+begin
+  if FInstructionSettings.Instruction = '' then
+    raise RDOpenAIException.Create('InstructionSettings.Instruction not set.');
+end;
+
 constructor TRDOpenAI.Create(AOwner: TComponent);
 begin
   inherited;
@@ -389,6 +406,7 @@ begin
   FShowQuestionInAnswer := False;
   URL := cDEF_URL;
   FQuestionSettings := TQuestion.Create;
+  FInstructionSettings := TInstruction.Create;
   FModerationInput := TModerationInput.Create;
   FIgnoreReturns := True;
 end;
@@ -396,8 +414,10 @@ end;
 destructor TRDOpenAI.Destroy;
 begin
   Cancel;
+  FreeAndNil(FInstructionSettings);
   FreeAndNil(FQuestionSettings);
   FreeAndNil(FCompletions);
+  FreeAndNil(FInstrCompletions);
   FreeAndNil(FModerationInput);
   FreeAndNil(FModels);
   FreeAndNil(FModerations);
@@ -470,6 +490,14 @@ begin
   end;
 end;
 
+procedure TRDOpenAI.DoInstrCompletionsLoad(ACompletions: TCompletions);
+begin
+  if assigned(FOnInstrCompletionsLoaded) then
+  begin
+    FOnInstrCompletionsLoaded(Self, ACompletions);
+  end;
+end;
+
 function TRDOpenAI.GetCompletions: TCompletions;
 begin
   if FCompletions = nil then
@@ -485,6 +513,23 @@ begin
     end;
   end;
   Result := FCompletions;
+end;
+
+function TRDOpenAI.GetInstrCompletions: TCompletions;
+begin
+  if FInstrCompletions = nil then
+  begin
+    var
+      WasAsync: Boolean := FAsynchronous;
+      // not asynchronous in this case!
+    Asynchronous := False;
+    try
+      RefreshInstrCompletions;
+    finally
+      Asynchronous := WasAsync;
+    end;
+  end;
+  Result := FInstrCompletions;
 end;
 
 function TRDOpenAI.GetModels: TModels;
@@ -570,6 +615,54 @@ begin
   end else begin
     FRequest.Execute;
     CompletionCallback;
+  end;
+
+end;
+
+procedure TRDOpenAI.RefreshInstrCompletions;
+begin
+  CheckApiKey;
+  CheckModel;
+  CheckInstruction;
+  if FResponse = nil then
+  begin
+    FResponse := TRESTResponse.Create(nil);
+  end;
+  FResponse.RootElement := '';
+  if FRequest = nil then
+  begin
+    FRequest := TRESTRequest.Create(nil);
+    FRequest.OnHTTPProtocolError := ProtocolError;
+    FRequest.Client := FRestClient;
+    FRequest.SynchronizedEvents := FAsynchronous;
+    FRequest.Timeout := FTimeOutSeconds * 1000;
+  end;
+  FRequest.Method := rmPOST;
+
+  FRequest.Body.ClearBody;
+  var
+    s: string;
+  s := FInstructionSettings.AsJson;
+
+  FRequest.Params.AddItem.Assign(FRESTRequestParameter);
+  FRESTRequestParameter2.Value := s; // Body !
+  FRequest.Params.AddItem.Assign(FRESTRequestParameter2);
+
+  FRequest.Resource := 'edits';
+  FRequest.Response := FResponse;
+
+  FBusy := True;
+
+  if assigned(FRequestInfoProc) then
+    FRequestInfoProc(FRequest.Resource, gfGet);
+
+  if FAsynchronous then
+  begin
+    FRequest.ExecuteAsync(InstrCompletionCallback, True, True, DoCompletionHandlerWithError);
+    Exit;
+  end else begin
+    FRequest.Execute;
+    InstrCompletionCallback;
   end;
 
 end;
@@ -700,6 +793,54 @@ begin
                 DoAnswer(FCompletions.Choices[0].Text);
               end;
           end;
+        end;
+      finally
+        JsonObj.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        FLastError := E.Message;
+        DoError(FLastError);
+      end;
+    end;
+  finally
+    FBusy := False;
+  end;
+end;
+
+procedure TRDOpenAI.InstrCompletionCallback;
+var
+  JsonObj: TJSONObject;
+begin
+  try
+    if FRequest = nil then
+      Exit;
+    if FResponse = nil then
+      Exit;
+
+    if FResponse.StatusCode <> 200 then
+    begin
+      FLastError := FResponse.StatusText;
+      DoError(FLastError);
+      Exit;
+    end;
+
+    if assigned(FRequestInfoProc) then
+      FRequestInfoProc(FRequest.Resource, gfFinish);
+
+    JsonObj := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(FResponse.Content), 0) as TJSONObject;
+    if JsonObj = nil then
+      Exit;
+
+    try
+      try
+        FreeAndNil(FInstrCompletions);
+        FInstrCompletions := TJson.JsonToObject<TCompletions>(TJSONObject(JsonObj), cJSON_OPTIONS);
+        DoInstrCompletionsLoad(FInstrCompletions);
+        if (FInstrCompletions <> nil) and (FInstrCompletions.Choices.Count > 0) then
+        begin
+          DoAnswer(FInstrCompletions.Choices[0].Text);
         end;
       finally
         JsonObj.Free;
@@ -854,6 +995,15 @@ begin
   end;
   Cancel;
   RefreshCompletions;
+end;
+
+procedure TRDChatGpt.Instruct(AInput: String; AInstruction: String);
+begin
+  FInstructionSettings.Model := 'text-davinci-edit-001'; // hard coded
+  FInstructionSettings.Input := AInput;
+  FInstructionSettings.Instruction := AInstruction;
+  Cancel;
+  RefreshInstrCompletions;
 end;
 
 procedure TRDOpenAI.SetQuestion(const Value: string);

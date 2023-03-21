@@ -76,6 +76,17 @@ type
     property MaxTokens: Integer read FMaxTokens write FMaxTokens;
   end;
 
+  TInstruction = class(TJsonDTO)
+  private
+    FInput: string;
+    FInstruction: string;
+    FModel: string;
+  published
+    property Input: string read FInput write FInput;
+    property Instruction: string read FInstruction write FInstruction;
+    property Model: string read FModel write FModel;
+  end;
+
 type
   TPermission = class
   private
