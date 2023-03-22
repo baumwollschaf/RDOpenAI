@@ -252,7 +252,65 @@ type
     property Input: string read FInput write FInput;
   end;
 
+  TImageData = class
+  private
+    [JSONName('b64_json')]
+    FB64Json: string;
+    FUrl: string;
+  published
+    property B64Json: string read FB64Json write FB64Json;
+    property Url: string read FUrl write FUrl;
+  end;
+
+  TDallEGenImage = class(TJsonDTO)
+  private
+    FCreated: Integer;
+    [JSONName('data'), JSONMarshalled(False)]
+    FDataArray: TArray<TImageData>;
+    [GenericListReflect]
+    FData: TObjectList<TImageData>;
+    function GetData: TObjectList<TImageData>;
+  protected
+    function GetAsJson: string; override;
+  published
+    property Created: Integer read FCreated write FCreated;
+    property Data: TObjectList<TImageData> read GetData;
+  public
+    destructor Destroy; override;
+  end;
+
+  TInputDallEGenImage = class(TJsonDTO)
+  private
+    FN: Integer;
+    FPrompt: string;
+    [JSONName('response_format')]
+    FResponseFormat: string;
+    FSize: string;
+  published
+    property N: Integer read FN write FN;
+    property Prompt: string read FPrompt write FPrompt;
+    property ResponseFormat: string read FResponseFormat write FResponseFormat;
+    property Size: string read FSize write FSize;
+  end;
+
 implementation
+
+destructor TDallEGenImage.Destroy;
+begin
+  GetData.Free;
+  inherited;
+end;
+
+function TDallEGenImage.GetData: TObjectList<TImageData>;
+begin
+  Result := ObjectList<TImageData>(FData, FDataArray);
+end;
+
+function TDallEGenImage.GetAsJson: string;
+begin
+  RefreshArray<TImageData>(FData, FDataArray);
+  Result := inherited;
+end;
 
 constructor TCompletions.Create;
 begin

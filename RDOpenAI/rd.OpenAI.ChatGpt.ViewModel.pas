@@ -106,6 +106,7 @@ type
     FOnCompletionsLoaded: TTypedEvent<TCompletions>;
     FOnInstrCompletionsLoaded: TTypedEvent<TCompletions>;
     FOnModerationsLoaded: TTypedEvent<TModerations>;
+    FOnDallEGenImageLoaded: TTypedEvent<TDallEGenImage>;
 
     FIgnoreReturns: Boolean;
 
@@ -113,6 +114,7 @@ type
     FModels: TModels;
     FModerations: TModerations;
     FInstrCompletions: TCompletions;
+    FDallEGenImage: TDallEGenImage;
 
     FRequestInfoProc: TRequestInfoProc;
     procedure ProtocolError(Sender: TCustomRESTRequest);
@@ -123,6 +125,7 @@ type
     FBusy: Boolean;
     FQuestionSettings: TQuestion;
     FInstructionSettings: TInstruction;
+    FInputDallEImage: TInputDallEGenImage;
     procedure RefreshCompletions;
     procedure RefreshInstrCompletions;
     procedure CompletionCallback;
@@ -134,15 +137,21 @@ type
     procedure RefreshModerations;
     procedure ModerationsCallback;
 
+    procedure RefreshDallEGenImage;
+    procedure DallEGenImageCallback;
+
     function GetModels: TModels;
     function GetCompletions: TCompletions;
     function GetInstrCompletions: TCompletions;
     function GetModerations: TModerations;
+    function GetDallEGenImage: TDallEGenImage;
+
     function RemoveEmptyLinesWithReturns(AText: string): string;
   private
     FModerationInput: TModerationInput;
     FTimeOutSeconds: Integer;
     procedure CheckApiKey;
+    procedure CheckDallEGenInput;
     procedure CheckModel;
     procedure CheckQuestion;
     procedure CheckInstruction;
@@ -158,6 +167,7 @@ type
     procedure DoCompletionsLoad(ACompletions: TCompletions); virtual;
     procedure DoInstrCompletionsLoad(ACompletions: TCompletions); virtual;
     procedure DoModerationsLoad(AModerations: TModerations); virtual;
+    procedure DoDallEImageGenLoad(ADallEImageGen: TDallEGenImage); virtual;
 
     procedure DoCompletionHandlerWithError(AObject: TObject);
   strict private
@@ -172,8 +182,10 @@ type
     property Completions: TCompletions read GetCompletions;
     property Models: TModels read GetModels;
     property Moderations: TModerations read GetModerations;
+    property DallEGenImage: TDallEGenImage read GetDallEGenImage;
 {$ENDIF}
     property ModerationInput: TModerationInput read FModerationInput write SetModerationInput;
+    property InputDallEImage: TInputDallEGenImage read FInputDallEImage write FInputDallEImage;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Cancel;
@@ -187,6 +199,7 @@ type
     property OnCompletionsLoaded: TTypedEvent<TCompletions> read FOnCompletionsLoaded write FOnCompletionsLoaded;
     property OnInstrCompletionsLoaded: TTypedEvent<TCompletions> read FOnInstrCompletionsLoaded write FOnInstrCompletionsLoaded;
     property OnModerationsLoaded: TTypedEvent<TModerations> read FOnModerationsLoaded write FOnModerationsLoaded;
+    property OnDallEGenImageLoaded: TTypedEvent<TDallEGenImage> read FOnDallEGenImageLoaded write FOnDallEGenImageLoaded;
     property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default
 {$IFDEF MSWINDOWS}False{$ELSE}True{$ENDIF};
     property TimeOutSeconds: Integer read FTimeOutSeconds write SetTimeOutSeconds default 30;
@@ -201,6 +214,7 @@ type
     procedure Instruct(AInput: String; AInstruction: String);
     procedure LoadModels;
     procedure LoadModerations(AInput: string = '');
+    procedure GenerateImage(APrompt: String; ASize: String = '1024x1024'; AFormat: string = 'url');//'b64_json'
   end;
 
 procedure Register;
@@ -369,6 +383,14 @@ begin
     raise RDOpenAIException.Create('ApiKey not set.');
 end;
 
+procedure TRDOpenAI.CheckDallEGenInput;
+begin
+  if FInputDallEImage.Prompt = '' then
+    raise RDOpenAIException.Create('InputDallEImage.Prompt not set.');
+  if FInputDallEImage.Size = '' then
+    raise RDOpenAIException.Create('InputDallEImage.Size not set.');
+end;
+
 procedure TRDOpenAI.CheckModel;
 begin
   if FModel = '' then
@@ -408,12 +430,58 @@ begin
   FQuestionSettings := TQuestion.Create;
   FInstructionSettings := TInstruction.Create;
   FModerationInput := TModerationInput.Create;
+  FInputDallEImage := TInputDallEGenImage.Create;
   FIgnoreReturns := True;
+end;
+
+procedure TRDOpenAI.DallEGenImageCallback;
+var
+  JsonObj: TJSONObject;
+begin
+  try
+    if FRequest = nil then
+      Exit;
+    if FResponse = nil then
+      Exit;
+
+    if FResponse.StatusCode <> 200 then
+    begin
+      FLastError := FResponse.StatusText;
+      DoError(FLastError);
+      Exit;
+    end;
+
+    if assigned(FRequestInfoProc) then
+      FRequestInfoProc(FRequest.Resource, gfFinish);
+
+    JsonObj := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(FResponse.Content), 0) as TJSONObject;
+    if JsonObj = nil then
+      Exit;
+
+    try
+      try
+        FreeAndNil(FDallEGenImage);
+        FDallEGenImage := TJson.JsonToObject<TDallEGenImage>(TJSONObject(JsonObj), cJSON_OPTIONS);
+        DoDallEImageGenLoad(FDallEGenImage);
+      finally
+        JsonObj.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        FLastError := E.Message;
+        DoError(FLastError);
+      end;
+    end;
+  finally
+    FBusy := False;
+  end;
 end;
 
 destructor TRDOpenAI.Destroy;
 begin
   Cancel;
+  FreeAndNil(FInputDallEImage);
   FreeAndNil(FInstructionSettings);
   FreeAndNil(FQuestionSettings);
   FreeAndNil(FCompletions);
@@ -490,6 +558,14 @@ begin
   end;
 end;
 
+procedure TRDOpenAI.DoDallEImageGenLoad(ADallEImageGen: TDallEGenImage);
+begin
+  if assigned(FOnDallEGenImageLoaded) then
+  begin
+    FOnDallEGenImageLoaded(Self, ADallEImageGen);
+  end;
+end;
+
 procedure TRDOpenAI.DoInstrCompletionsLoad(ACompletions: TCompletions);
 begin
   if assigned(FOnInstrCompletionsLoaded) then
@@ -513,6 +589,23 @@ begin
     end;
   end;
   Result := FCompletions;
+end;
+
+function TRDOpenAI.GetDallEGenImage: TDallEGenImage;
+begin
+  if FDallEGenImage = nil then
+  begin
+    var
+      WasAsync: Boolean := FAsynchronous;
+      // not asynchronous in this case!
+    Asynchronous := False;
+    try
+      RefreshDallEGenImage;
+    finally
+      Asynchronous := WasAsync;
+    end;
+  end;
+  Result := FDallEGenImage;
 end;
 
 function TRDOpenAI.GetInstrCompletions: TCompletions;
@@ -617,6 +710,53 @@ begin
     CompletionCallback;
   end;
 
+end;
+
+procedure TRDOpenAI.RefreshDallEGenImage;
+begin
+  CheckApiKey;
+  CheckModel;
+  CheckDallEGenInput;
+  if FResponse = nil then
+  begin
+    FResponse := TRESTResponse.Create(nil);
+  end;
+  FResponse.RootElement := '';
+  if FRequest = nil then
+  begin
+    FRequest := TRESTRequest.Create(nil);
+    FRequest.OnHTTPProtocolError := ProtocolError;
+    FRequest.Client := FRestClient;
+    FRequest.SynchronizedEvents := FAsynchronous;
+    FRequest.Timeout := FTimeOutSeconds * 1000;
+  end;
+  FRequest.Method := rmPOST;
+
+  FRequest.Body.ClearBody;
+  var
+    s: string;
+  s := FInputDallEImage.AsJson;
+
+  FRequest.Params.AddItem.Assign(FRESTRequestParameter);
+  FRESTRequestParameter2.Value := s; // Body !
+  FRequest.Params.AddItem.Assign(FRESTRequestParameter2);
+
+  FRequest.Resource := 'images/generations';
+  FRequest.Response := FResponse;
+
+  FBusy := True;
+
+  if assigned(FRequestInfoProc) then
+    FRequestInfoProc(FRequest.Resource, gfGet);
+
+  if FAsynchronous then
+  begin
+    FRequest.ExecuteAsync(DallEGenImageCallback, True, True, DoCompletionHandlerWithError);
+    Exit;
+  end else begin
+    FRequest.Execute;
+    DallEGenImageCallback;
+  end;
 end;
 
 procedure TRDOpenAI.RefreshInstrCompletions;
@@ -995,6 +1135,16 @@ begin
   end;
   Cancel;
   RefreshCompletions;
+end;
+
+procedure TRDChatGpt.GenerateImage(APrompt, ASize, AFormat: string);
+begin
+  FInputDallEImage.Prompt := APrompt;
+  FInputDallEImage.N := 1;
+  FInputDallEImage.ResponseFormat := AFormat;
+  FInputDallEImage.Size := ASize;
+  Cancel;
+  RefreshDallEGenImage;
 end;
 
 procedure TRDChatGpt.Instruct(AInput: String; AInstruction: String);
