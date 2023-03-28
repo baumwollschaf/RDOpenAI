@@ -10,6 +10,15 @@ uses
 {$M+}
 
 type
+  TMessage = class
+  private
+    FContent: string;
+    FRole: string;
+  published
+    property Content: string read FContent write FContent;
+    property Role: string read FRole write FRole;
+  end;
+
   TUsage = class
   private
     [JSONName('completion_tokens')]
@@ -30,10 +39,15 @@ type
     FFinishReason: string;
     FIndex: Integer;
     FText: string;
+    FMessage: TMessage;
   published
     property FinishReason: string read FFinishReason write FFinishReason;
     property index: Integer read FIndex write FIndex;
     property Text: string read FText write FText;
+    property Message: TMessage read FMessage;
+  public
+    constructor Create;
+    destructor Destroy; override;
   end;
 
   TCompletions = class(TJsonDTO)
@@ -293,6 +307,23 @@ type
     property Size: string read FSize write FSize;
   end;
 
+  TInputChatCompletion = class(TJsonDTO)
+  private
+    [JSONName('messages'), JSONMarshalled(False)]
+    FMessagesArray: TArray<TMessage>;
+    [GenericListReflect]
+    FMessages: TObjectList<TMessage>;
+    FModel: string;
+    function GetMessages: TObjectList<TMessage>;
+  protected
+    function GetAsJson: string; override;
+  published
+    property Messages: TObjectList<TMessage> read GetMessages;
+    property Model: string read FModel write FModel;
+  public
+    destructor Destroy; override;
+  end;
+
 implementation
 
 destructor TDallEGenImage.Destroy;
@@ -405,6 +436,39 @@ function TModerations.GetAsJson: string;
 begin
   RefreshArray<TResults>(FResults, FResultsArray);
   Result := inherited;
+end;
+
+{ TInputChatCompletion }
+
+destructor TInputChatCompletion.Destroy;
+begin
+  GetMessages.Free;
+  inherited;
+end;
+
+function TInputChatCompletion.GetMessages: TObjectList<TMessage>;
+begin
+  Result := ObjectList<TMessage>(FMessages, FMessagesArray);
+end;
+
+function TInputChatCompletion.GetAsJson: string;
+begin
+  RefreshArray<TMessage>(FMessages, FMessagesArray);
+  Result := inherited;
+end;
+
+{ TChoices }
+
+constructor TChoices.Create;
+begin
+  inherited;
+  FMessage := TMessage.Create;
+end;
+
+destructor TChoices.Destroy;
+begin
+  FMessage.Free;
+  inherited;
 end;
 
 end.

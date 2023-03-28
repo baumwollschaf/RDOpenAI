@@ -71,8 +71,12 @@ uses
 procedure TForm1.Button1Click(Sender: TObject);
 begin
   RDChatGpt1.Cancel;
-  RDChatGpt1.Question := Edit1.Text;
-  RDChatGpt1.Ask;
+  if RDChatGpt1.Gpt35AndUp(RDChatGpt1.Model) then
+  begin
+    RDChatGpt1.Chat(Edit1.Text);
+  end else begin
+    RDChatGpt1.Ask(Edit1.Text);
+  end;
   Edit1.SetFocus;
 end;
 

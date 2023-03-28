@@ -106,6 +106,7 @@ type
     FOnError: TMessageEvent;
     FOnModelsLoaded: TTypedEvent<TModels>;
     FOnCompletionsLoaded: TTypedEvent<TCompletions>;
+    FOnChatCompletionsLoaded: TTypedEvent<TCompletions>;
     FOnInstrCompletionsLoaded: TTypedEvent<TCompletions>;
     FOnModerationsLoaded: TTypedEvent<TModerations>;
     FOnDallEGenImageLoaded: TTypedEvent<TDallEGenImage>;
@@ -113,6 +114,7 @@ type
     FIgnoreReturns: Boolean;
 
     FCompletions: TCompletions;
+    FChatCompletions: TCompletions;
     FModels: TModels;
     FModerations: TModerations;
     FInstrCompletions: TCompletions;
@@ -123,16 +125,18 @@ type
     procedure ProtocolErrorClient(Sender: TCustomRESTClient);
     function GetURL: string;
     procedure SetURL(const Value: string);
-    function Gpt35AndUp(AModel: String): Boolean;
     function GetEndPoint(AModelEndPoint: TModelEndPoint): String;
   protected
     FBusy: Boolean;
     FQuestionSettings: TQuestion;
     FInstructionSettings: TInstruction;
     FInputDallEImage: TInputDallEGenImage;
+    FInputChatCompletion: TInputChatCompletion;
     procedure RefreshCompletions;
+    procedure RefreshChatCompletions;
     procedure RefreshInstrCompletions;
     procedure CompletionCallback;
+    procedure ChatCompletionCallback;
     procedure InstrCompletionCallback;
 
     procedure RefreshModels;
@@ -146,6 +150,7 @@ type
 
     function GetModels: TModels;
     function GetCompletions: TCompletions;
+    function GetChatCompletions: TCompletions;
     function GetInstrCompletions: TCompletions;
     function GetModerations: TModerations;
     function GetDallEGenImage: TDallEGenImage;
@@ -160,6 +165,7 @@ type
     procedure CheckQuestion;
     procedure CheckInstruction;
     procedure CheckModerationInput;
+    procedure CheckContentAndRole;
     procedure SetTimeOutSeconds(const Value: Integer);
   protected
     FQuestion: string;
@@ -169,6 +175,7 @@ type
     procedure DoError(AMessage: string); virtual;
     procedure DoModelsLoad(AModels: TModels); virtual;
     procedure DoCompletionsLoad(ACompletions: TCompletions); virtual;
+    procedure DoChatCompletionsLoad(ACompletions: TCompletions); virtual;
     procedure DoInstrCompletionsLoad(ACompletions: TCompletions); virtual;
     procedure DoModerationsLoad(AModerations: TModerations); virtual;
     procedure DoDallEImageGenLoad(ADallEImageGen: TDallEGenImage); virtual;
@@ -179,11 +186,13 @@ type
     procedure SetQuestion(const Value: string);
     procedure SetModerationInput(const Value: TModerationInput);
   public
+    function Gpt35AndUp(AModel: String): Boolean;
 {$IFDEF MSWINDOWS}
     // not async
     // mobile stuff via events
     property InstrCompletions: TCompletions read GetInstrCompletions;
     property Completions: TCompletions read GetCompletions;
+    property ChatCompletions: TCompletions read GetChatCompletions;
     property Models: TModels read GetModels;
     property Moderations: TModerations read GetModerations;
     property DallEGenImage: TDallEGenImage read GetDallEGenImage;
@@ -201,6 +210,7 @@ type
     property OnError: TMessageEvent read FOnError write FOnError;
     property OnModelsLoaded: TTypedEvent<TModels> read FOnModelsLoaded write FOnModelsLoaded;
     property OnCompletionsLoaded: TTypedEvent<TCompletions> read FOnCompletionsLoaded write FOnCompletionsLoaded;
+    property OnChatCompletionsLoaded: TTypedEvent<TCompletions> read FOnChatCompletionsLoaded write FOnChatCompletionsLoaded;
     property OnInstrCompletionsLoaded: TTypedEvent<TCompletions> read FOnInstrCompletionsLoaded write FOnInstrCompletionsLoaded;
     property OnModerationsLoaded: TTypedEvent<TModerations> read FOnModerationsLoaded write FOnModerationsLoaded;
     property OnDallEGenImageLoaded: TTypedEvent<TDallEGenImage> read FOnDallEGenImageLoaded write FOnDallEGenImageLoaded;
@@ -214,7 +224,8 @@ type
   TRDChatGpt = class(TRDOpenAI)
   private
   public
-    procedure Ask(AQuestion: string = '');
+    procedure Ask(AQuestion: string = ''); overload;
+    procedure Chat(AContent: string; ARole: String = 'user'); overload;
     procedure Instruct(AInput: String; AInstruction: String);
     procedure LoadModels;
     procedure LoadModerations(AInput: string = '');
@@ -381,10 +392,70 @@ begin
   end;
 end;
 
+procedure TRDOpenAI.ChatCompletionCallback;
+var
+  JsonObj: TJSONObject;
+begin
+  try
+    if FRequest = nil then
+      Exit;
+    if FResponse = nil then
+      Exit;
+
+    if FResponse.StatusCode <> 200 then
+    begin
+      FLastError := FResponse.StatusText;
+      DoError(FLastError);
+      Exit;
+    end;
+
+    if assigned(FRequestInfoProc) then
+      FRequestInfoProc(FRequest.Resource, gfFinish);
+
+    JsonObj := TJSONObject.ParseJSONValue(TEncoding.UTF8.GetBytes(FResponse.Content), 0) as TJSONObject;
+    if JsonObj = nil then
+      Exit;
+
+    try
+      try
+        FreeAndNil(FChatCompletions);
+        FChatCompletions := TJson.JsonToObject<TCompletions>(TJSONObject(JsonObj), cJSON_OPTIONS);
+        DoChatCompletionsLoad(FChatCompletions);
+        if (FChatCompletions <> nil) and (FChatCompletions.Choices.Count > 0) then
+        begin
+          case StrToFinishReason(FChatCompletions.Choices[0].FinishReason) of
+            frStop, frLength:
+              begin
+                DoAnswer(FChatCompletions.Choices[0].Message.Content);
+              end;
+          end;
+        end;
+      finally
+        JsonObj.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        FLastError := E.Message;
+        DoError(FLastError);
+      end;
+    end;
+  finally
+    FBusy := False;
+  end;
+end;
+
 procedure TRDOpenAI.CheckApiKey;
 begin
   if FApiKey = '' then
     raise RDOpenAIException.Create('ApiKey not set.');
+end;
+
+procedure TRDOpenAI.CheckContentAndRole;
+begin
+  if FInputChatCompletion.Messages.Count < 1 then
+    raise RDOpenAIException.Create('InputChatCompletion.Messages.Count < 1');
+
 end;
 
 procedure TRDOpenAI.CheckDallEGenInput;
@@ -422,6 +493,7 @@ end;
 constructor TRDOpenAI.Create(AOwner: TComponent);
 begin
   inherited;
+  FInputChatCompletion := TInputChatCompletion.Create;
   FRestClient.OnHTTPProtocolError := ProtocolErrorClient;
 {$IFDEF MSWINDOWS}
   FAsynchronous := False;
@@ -485,10 +557,12 @@ end;
 destructor TRDOpenAI.Destroy;
 begin
   Cancel;
+  FreeAndNil(FInputChatCompletion);
   FreeAndNil(FInputDallEImage);
   FreeAndNil(FInstructionSettings);
   FreeAndNil(FQuestionSettings);
   FreeAndNil(FCompletions);
+  FreeAndNil(FChatCompletions);
   FreeAndNil(FInstrCompletions);
   FreeAndNil(FModerationInput);
   FreeAndNil(FModels);
@@ -545,6 +619,14 @@ begin
   end;
 end;
 
+procedure TRDOpenAI.DoChatCompletionsLoad(ACompletions: TCompletions);
+begin
+  if assigned(FOnChatCompletionsLoaded) then
+  begin
+    FOnChatCompletionsLoaded(Self, ACompletions);
+  end;
+end;
+
 procedure TRDOpenAI.DoCompletionHandlerWithError(AObject: TObject);
 begin
   try
@@ -576,6 +658,23 @@ begin
   begin
     FOnInstrCompletionsLoaded(Self, ACompletions);
   end;
+end;
+
+function TRDOpenAI.GetChatCompletions: TCompletions;
+begin
+  if FChatCompletions = nil then
+  begin
+    var
+      WasAsync: Boolean := FAsynchronous;
+      // not asynchronous in this case!
+    Asynchronous := False;
+    try
+      RefreshChatCompletions;
+    finally
+      Asynchronous := WasAsync;
+    end;
+  end;
+  Result := FChatCompletions;
 end;
 
 function TRDOpenAI.GetCompletions: TCompletions;
@@ -701,6 +800,55 @@ begin
   end;
 end;
 
+procedure TRDOpenAI.RefreshChatCompletions;
+begin
+  CheckApiKey;
+  CheckModel;
+  CheckContentAndRole;
+  if FResponse = nil then
+  begin
+    FResponse := TRESTResponse.Create(nil);
+  end;
+  FResponse.RootElement := '';
+  if FRequest = nil then
+  begin
+    FRequest := TRESTRequest.Create(nil);
+    FRequest.OnHTTPProtocolError := ProtocolError;
+    FRequest.Client := FRestClient;
+    FRequest.SynchronizedEvents := FAsynchronous;
+    FRequest.Timeout := FTimeOutSeconds * 1000;
+  end;
+  FRequest.Method := rmPOST;
+
+  FRequest.Body.ClearBody;
+  var
+    s: string;
+  s := FInputChatCompletion.AsJson;
+
+  FRequest.Params.AddItem.Assign(FRESTRequestParameter);
+  FRESTRequestParameter2.Value := s; // Body !
+  FRequest.Params.AddItem.Assign(FRESTRequestParameter2);
+
+  FRequest.Resource := GetEndPoint(meChatCompletions);
+
+  FRequest.Response := FResponse;
+
+  FBusy := True;
+
+  if assigned(FRequestInfoProc) then
+    FRequestInfoProc(FRequest.Resource, gfGet);
+
+  if FAsynchronous then
+  begin
+    FRequest.ExecuteAsync(ChatCompletionCallback, True, True, DoCompletionHandlerWithError);
+    Exit;
+  end else begin
+    FRequest.Execute;
+    CompletionCallback;
+  end;
+
+end;
+
 procedure TRDOpenAI.RefreshCompletions;
 begin
   CheckApiKey;
@@ -731,8 +879,6 @@ begin
   FRequest.Params.AddItem.Assign(FRESTRequestParameter2);
 
   FRequest.Resource := GetEndPoint(meCompletions);
-  if Gpt35AndUp(Model) then
-    FRequest.Resource := GetEndPoint(meChatCompletions);
 
   FRequest.Response := FResponse;
 
@@ -1175,6 +1321,19 @@ begin
   end;
   Cancel;
   RefreshCompletions;
+end;
+
+procedure TRDChatGpt.Chat(AContent, ARole: String);
+begin
+  FInputChatCompletion.Model := FModel;
+  FInputChatCompletion.Messages.Clear;
+  var
+    Msg: TMessage := TMessage.Create;
+  Msg.Content := AContent;
+  Msg.Role := ARole;
+  FInputChatCompletion.Messages.Add(Msg);
+  Cancel;
+  RefreshChatCompletions;
 end;
 
 procedure TRDChatGpt.GenerateImage(APrompt, ASize, AFormat: string);
