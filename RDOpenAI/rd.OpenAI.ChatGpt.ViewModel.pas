@@ -96,6 +96,8 @@ type
   end;
 
   TRDOpenAI = class abstract(TRDOpenAIRestClient)
+  private type
+    TModelEndPoint = (meCompletions, meChatCompletions, meModerations, meInstructions, meDallEGen, meModels);
   strict private
     FLastError: string;
     FResponse: TRESTResponse;
@@ -121,6 +123,8 @@ type
     procedure ProtocolErrorClient(Sender: TCustomRESTClient);
     function GetURL: string;
     procedure SetURL(const Value: string);
+    function Gpt35AndUp(AModel: String): Boolean;
+    function GetEndPoint(AModelEndPoint: TModelEndPoint): String;
   protected
     FBusy: Boolean;
     FQuestionSettings: TQuestion;
@@ -214,7 +218,7 @@ type
     procedure Instruct(AInput: String; AInstruction: String);
     procedure LoadModels;
     procedure LoadModerations(AInput: string = '');
-    procedure GenerateImage(APrompt: String; ASize: String = '1024x1024'; AFormat: string = 'url');//'b64_json'
+    procedure GenerateImage(APrompt: String; ASize: String = '1024x1024'; AFormat: string = 'url'); // 'b64_json'
   end;
 
 procedure Register;
@@ -608,6 +612,26 @@ begin
   Result := FDallEGenImage;
 end;
 
+function TRDOpenAI.GetEndPoint(AModelEndPoint: TModelEndPoint): String;
+begin
+  Result := '';
+  case AModelEndPoint of
+    meCompletions:
+      Result := 'completions';
+    meChatCompletions:
+      Result := 'chat/completions';
+    meModerations:
+      Result := 'moderations';
+    meInstructions:
+      Result := 'edits';
+    meDallEGen:
+      Result := 'images/generations';
+    meModels:
+      Result := 'models';
+  end;
+  Assert(Result <> '');
+end;
+
 function TRDOpenAI.GetInstrCompletions: TCompletions;
 begin
   if FInstrCompletions = nil then
@@ -664,6 +688,19 @@ begin
   Result := BaseURL;
 end;
 
+function TRDOpenAI.Gpt35AndUp(AModel: String): Boolean;
+begin
+  Result := False;
+  AModel := AModel.ToLower.Trim;
+  const
+    Models: TArray<String> = ['gpt-4', 'gpt-4-0314', 'gpt-4-32k', 'gpt-4-32k-0314', 'gpt-3.5-turbo', 'gpt-3.5-turbo-0301'];
+  for var s in Models do
+  begin
+    if AModel.Contains(s) then
+      Exit(True);
+  end;
+end;
+
 procedure TRDOpenAI.RefreshCompletions;
 begin
   CheckApiKey;
@@ -693,7 +730,10 @@ begin
   FRESTRequestParameter2.Value := s; // Body !
   FRequest.Params.AddItem.Assign(FRESTRequestParameter2);
 
-  FRequest.Resource := 'completions';
+  FRequest.Resource := GetEndPoint(meCompletions);
+  if Gpt35AndUp(Model) then
+    FRequest.Resource := GetEndPoint(meChatCompletions);
+
   FRequest.Response := FResponse;
 
   FBusy := True;
@@ -741,7 +781,7 @@ begin
   FRESTRequestParameter2.Value := s; // Body !
   FRequest.Params.AddItem.Assign(FRESTRequestParameter2);
 
-  FRequest.Resource := 'images/generations';
+  FRequest.Resource := GetEndPoint(meDallEGen);
   FRequest.Response := FResponse;
 
   FBusy := True;
@@ -788,7 +828,7 @@ begin
   FRESTRequestParameter2.Value := s; // Body !
   FRequest.Params.AddItem.Assign(FRESTRequestParameter2);
 
-  FRequest.Resource := 'edits';
+  FRequest.Resource := GetEndPoint(meInstructions);
   FRequest.Response := FResponse;
 
   FBusy := True;
@@ -836,7 +876,7 @@ begin
   FRESTRequestParameter2.Value := s; // Body !
   FRequest.Params.AddItem.Assign(FRESTRequestParameter2);
 
-  FRequest.Resource := 'moderations';
+  FRequest.Resource := GetEndPoint(meModerations);
   FRequest.Response := FResponse;
 
   FBusy := True;
@@ -877,7 +917,7 @@ begin
 
   FRequest.Params.AddItem.Assign(FRESTRequestParameter);
 
-  FRequest.Resource := 'models';
+  FRequest.Resource := GetEndPoint(meModels);
   FRequest.Response := FResponse;
 
   FBusy := True;
