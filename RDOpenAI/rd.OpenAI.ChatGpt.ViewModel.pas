@@ -38,6 +38,8 @@ type
   TRDOpenAIConnection = class abstract(TComponent)
   public type
     TFinishReason = (frNone, frStop, frLength);
+  public const
+    cVERSION = '1.10';
   private
     function StrToFinishReason(AValue: string): TFinishReason;
   private const
@@ -56,10 +58,12 @@ type
     FModel: string;
     FMaxTokens: Integer;
     procedure SetApiKey(const Value: string);
+    function GetVersion: String;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   published
+    property Version: String read GetVersion;
     property ApiKey: string read FApiKey write SetApiKey;
     property Temperature: double read FTemperature write FTemperature;
     property Model: string read FModel write FModel;
@@ -126,6 +130,8 @@ type
     function GetURL: string;
     procedure SetURL(const Value: string);
     function GetEndPoint(AModelEndPoint: TModelEndPoint): String;
+  strict private
+    function CreateRequest: TRESTRequest;
   protected
     FBusy: Boolean;
     FQuestionSettings: TQuestion;
@@ -148,13 +154,6 @@ type
     procedure RefreshDallEGenImage;
     procedure DallEGenImageCallback;
 
-    function GetModels: TModels;
-    function GetCompletions: TCompletions;
-    function GetChatCompletions: TCompletions;
-    function GetInstrCompletions: TCompletions;
-    function GetModerations: TModerations;
-    function GetDallEGenImage: TDallEGenImage;
-
     function RemoveEmptyLinesWithReturns(AText: string): string;
   private
     FModerationInput: TModerationInput;
@@ -168,9 +167,7 @@ type
     procedure CheckContentAndRole;
     procedure SetTimeOutSeconds(const Value: Integer);
   protected
-    FQuestion: string;
     FAsynchronous: Boolean;
-    FShowQuestionInAnswer: Boolean;
     procedure DoAnswer(AMessage: string); virtual;
     procedure DoError(AMessage: string); virtual;
     procedure DoModelsLoad(AModels: TModels); virtual;
@@ -183,26 +180,18 @@ type
     procedure DoCompletionHandlerWithError(AObject: TObject);
   strict private
     procedure SetAsynchronous(const Value: Boolean);
-    procedure SetQuestion(const Value: string);
     procedure SetModerationInput(const Value: TModerationInput);
   public
     function Gpt35AndUp(AModel: String): Boolean;
-{$IFDEF MSWINDOWS}
-    // not async
-    // mobile stuff via events
-    property InstrCompletions: TCompletions read GetInstrCompletions;
-    property Completions: TCompletions read GetCompletions;
-    property ChatCompletions: TCompletions read GetChatCompletions;
-    property Models: TModels read GetModels;
-    property Moderations: TModerations read GetModerations;
-    property DallEGenImage: TDallEGenImage read GetDallEGenImage;
-{$ENDIF}
+
     property ModerationInput: TModerationInput read FModerationInput write SetModerationInput;
     property InputDallEImage: TInputDallEGenImage read FInputDallEImage write FInputDallEImage;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure Cancel;
     procedure Assign(Source: TPersistent); override;
+  strict private
+    property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default True;
   published
     property URL: string read GetURL write SetURL stored True;
     property IgnoreReturns: Boolean read FIgnoreReturns write FIgnoreReturns default True;
@@ -214,11 +203,7 @@ type
     property OnInstrCompletionsLoaded: TTypedEvent<TCompletions> read FOnInstrCompletionsLoaded write FOnInstrCompletionsLoaded;
     property OnModerationsLoaded: TTypedEvent<TModerations> read FOnModerationsLoaded write FOnModerationsLoaded;
     property OnDallEGenImageLoaded: TTypedEvent<TDallEGenImage> read FOnDallEGenImageLoaded write FOnDallEGenImageLoaded;
-    property Asynchronous: Boolean read FAsynchronous write SetAsynchronous default
-{$IFDEF MSWINDOWS}False{$ELSE}True{$ENDIF};
     property TimeOutSeconds: Integer read FTimeOutSeconds write SetTimeOutSeconds default 30;
-    property ShowQuestionInAnswer: Boolean read FShowQuestionInAnswer write FShowQuestionInAnswer default False;
-    property Question: string read FQuestion write SetQuestion;
   end;
 
   TRDChatGpt = class(TRDOpenAI)
@@ -266,6 +251,11 @@ begin
   FreeAndNil(FRESTRequestParameter);
   FreeAndNil(FRESTRequestParameter2);
   inherited;
+end;
+
+function TRDOpenAIConnection.GetVersion: String;
+begin
+  Result := cVERSION;
 end;
 
 procedure TRDOpenAIConnection.SetApiKey(const Value: string);
@@ -380,7 +370,6 @@ begin
   Self.MaxTokens := OpenAI.MaxTokens;
   Self.TimeOutSeconds := OpenAI.TimeOutSeconds;
   Self.IgnoreReturns := OpenAI.IgnoreReturns;
-  Self.Question := OpenAI.Question;
 end;
 
 procedure TRDOpenAI.Cancel;
@@ -480,7 +469,7 @@ end;
 
 procedure TRDOpenAI.CheckQuestion;
 begin
-  if FQuestion = '' then
+  if FQuestionSettings.Prompt = '' then
     raise RDOpenAIException.Create('Question not set.');
 end;
 
@@ -495,19 +484,23 @@ begin
   inherited;
   FInputChatCompletion := TInputChatCompletion.Create;
   FRestClient.OnHTTPProtocolError := ProtocolErrorClient;
-{$IFDEF MSWINDOWS}
-  FAsynchronous := False;
-{$ELSE}
   FAsynchronous := True;
-{$ENDIF}
   FTimeOutSeconds := 30; // in seconds
-  FShowQuestionInAnswer := False;
   URL := cDEF_URL;
   FQuestionSettings := TQuestion.Create;
   FInstructionSettings := TInstruction.Create;
   FModerationInput := TModerationInput.Create;
   FInputDallEImage := TInputDallEGenImage.Create;
   FIgnoreReturns := True;
+end;
+
+function TRDOpenAI.CreateRequest: TRESTRequest;
+begin
+  Result := TRESTRequest.Create(nil);
+  Result.OnHTTPProtocolError := ProtocolError;
+  Result.Client := FRestClient;
+  Result.SynchronizedEvents := FAsynchronous;
+  Result.Timeout := FTimeOutSeconds * 1000;
 end;
 
 procedure TRDOpenAI.DallEGenImageCallback;
@@ -579,11 +572,6 @@ begin
     if FIgnoreReturns then
     begin
       AMessage := RemoveEmptyLinesWithReturns(AMessage);
-    end;
-
-    if FShowQuestionInAnswer then
-    begin
-      AMessage := FQuestion + #13#10 + AMessage;
     end;
 
     FOnAnswer(Self, AMessage);
@@ -660,57 +648,6 @@ begin
   end;
 end;
 
-function TRDOpenAI.GetChatCompletions: TCompletions;
-begin
-  if FChatCompletions = nil then
-  begin
-    var
-      WasAsync: Boolean := FAsynchronous;
-      // not asynchronous in this case!
-    Asynchronous := False;
-    try
-      RefreshChatCompletions;
-    finally
-      Asynchronous := WasAsync;
-    end;
-  end;
-  Result := FChatCompletions;
-end;
-
-function TRDOpenAI.GetCompletions: TCompletions;
-begin
-  if FCompletions = nil then
-  begin
-    var
-      WasAsync: Boolean := FAsynchronous;
-      // not asynchronous in this case!
-    Asynchronous := False;
-    try
-      RefreshCompletions;
-    finally
-      Asynchronous := WasAsync;
-    end;
-  end;
-  Result := FCompletions;
-end;
-
-function TRDOpenAI.GetDallEGenImage: TDallEGenImage;
-begin
-  if FDallEGenImage = nil then
-  begin
-    var
-      WasAsync: Boolean := FAsynchronous;
-      // not asynchronous in this case!
-    Asynchronous := False;
-    try
-      RefreshDallEGenImage;
-    finally
-      Asynchronous := WasAsync;
-    end;
-  end;
-  Result := FDallEGenImage;
-end;
-
 function TRDOpenAI.GetEndPoint(AModelEndPoint: TModelEndPoint): String;
 begin
   Result := '';
@@ -729,57 +666,6 @@ begin
       Result := 'models';
   end;
   Assert(Result <> '');
-end;
-
-function TRDOpenAI.GetInstrCompletions: TCompletions;
-begin
-  if FInstrCompletions = nil then
-  begin
-    var
-      WasAsync: Boolean := FAsynchronous;
-      // not asynchronous in this case!
-    Asynchronous := False;
-    try
-      RefreshInstrCompletions;
-    finally
-      Asynchronous := WasAsync;
-    end;
-  end;
-  Result := FInstrCompletions;
-end;
-
-function TRDOpenAI.GetModels: TModels;
-begin
-  if FModels = nil then
-  begin
-    var
-      WasAsync: Boolean := FAsynchronous;
-      // not asynchronous in this case!
-    Asynchronous := False;
-    try
-      RefreshModels;
-    finally
-      Asynchronous := WasAsync;
-    end;
-  end;
-  Result := FModels;
-end;
-
-function TRDOpenAI.GetModerations: TModerations;
-begin
-  if FModerations = nil then
-  begin
-    var
-      WasAsync: Boolean := FAsynchronous;
-      // not asynchronous in this case!
-    Asynchronous := False;
-    try
-      RefreshModerations;
-    finally
-      Asynchronous := WasAsync;
-    end;
-  end;
-  Result := FModerations;
 end;
 
 function TRDOpenAI.GetURL: string;
@@ -812,11 +698,7 @@ begin
   FResponse.RootElement := '';
   if FRequest = nil then
   begin
-    FRequest := TRESTRequest.Create(nil);
-    FRequest.OnHTTPProtocolError := ProtocolError;
-    FRequest.Client := FRestClient;
-    FRequest.SynchronizedEvents := FAsynchronous;
-    FRequest.Timeout := FTimeOutSeconds * 1000;
+    FRequest := CreateRequest;
   end;
   FRequest.Method := rmPOST;
 
@@ -861,11 +743,7 @@ begin
   FResponse.RootElement := '';
   if FRequest = nil then
   begin
-    FRequest := TRESTRequest.Create(nil);
-    FRequest.OnHTTPProtocolError := ProtocolError;
-    FRequest.Client := FRestClient;
-    FRequest.SynchronizedEvents := FAsynchronous;
-    FRequest.Timeout := FTimeOutSeconds * 1000;
+    FRequest := CreateRequest;
   end;
   FRequest.Method := rmPOST;
 
@@ -910,11 +788,7 @@ begin
   FResponse.RootElement := '';
   if FRequest = nil then
   begin
-    FRequest := TRESTRequest.Create(nil);
-    FRequest.OnHTTPProtocolError := ProtocolError;
-    FRequest.Client := FRestClient;
-    FRequest.SynchronizedEvents := FAsynchronous;
-    FRequest.Timeout := FTimeOutSeconds * 1000;
+    FRequest := CreateRequest;
   end;
   FRequest.Method := rmPOST;
 
@@ -957,11 +831,7 @@ begin
   FResponse.RootElement := '';
   if FRequest = nil then
   begin
-    FRequest := TRESTRequest.Create(nil);
-    FRequest.OnHTTPProtocolError := ProtocolError;
-    FRequest.Client := FRestClient;
-    FRequest.SynchronizedEvents := FAsynchronous;
-    FRequest.Timeout := FTimeOutSeconds * 1000;
+    FRequest := CreateRequest;
   end;
   FRequest.Method := rmPOST;
 
@@ -1005,11 +875,7 @@ begin
   FResponse.RootElement := '';
   if FRequest = nil then
   begin
-    FRequest := TRESTRequest.Create(nil);
-    FRequest.OnHTTPProtocolError := ProtocolError;
-    FRequest.Client := FRestClient;
-    FRequest.SynchronizedEvents := FAsynchronous;
-    FRequest.Timeout := FTimeOutSeconds * 1000;
+    FRequest := CreateRequest;
   end;
   FRequest.Method := rmPOST;
 
@@ -1051,11 +917,7 @@ begin
   FResponse.RootElement := '';
   if FRequest = nil then
   begin
-    FRequest := TRESTRequest.Create(nil);
-    FRequest.OnHTTPProtocolError := ProtocolError;
-    FRequest.Client := FRestClient;
-    FRequest.SynchronizedEvents := FAsynchronous;
-    FRequest.Timeout := FTimeOutSeconds * 1000;
+    FRequest := CreateRequest;
   end;
   FRequest.Method := rmGET;
 
@@ -1315,10 +1177,10 @@ end;
 
 procedure TRDChatGpt.Ask(AQuestion: string);
 begin
-  if AQuestion <> '' then
-  begin
-    Question := AQuestion;
-  end;
+  FQuestionSettings.Prompt := AQuestion;
+  FQuestionSettings.Model := FModel;
+  FQuestionSettings.Temperature := FTemperature;
+  FQuestionSettings.MaxTokens := FMaxTokens;
   Cancel;
   RefreshCompletions;
 end;
@@ -1353,18 +1215,6 @@ begin
   FInstructionSettings.Instruction := AInstruction;
   Cancel;
   RefreshInstrCompletions;
-end;
-
-procedure TRDOpenAI.SetQuestion(const Value: string);
-begin
-  if FQuestion <> Value then
-  begin
-    FQuestion := Value;
-    FQuestionSettings.Prompt := FQuestion;
-    FQuestionSettings.Model := FModel;
-    FQuestionSettings.Temperature := FTemperature;
-    FQuestionSettings.MaxTokens := FMaxTokens;
-  end;
 end;
 
 procedure TRDOpenAI.SetTimeOutSeconds(const Value: Integer);

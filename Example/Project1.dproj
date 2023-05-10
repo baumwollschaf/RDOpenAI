@@ -87,7 +87,6 @@
         <Icns_MainIcns>$(BDS)\bin\delphi_PROJECTICNS.icns</Icns_MainIcns>
         <SanitizedProjectName>Project1</SanitizedProjectName>
         <DCC_UnitSearchPath>..\RDOpenAI;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-        <DCC_Define>baumwollschaf;$(DCC_Define)</DCC_Define>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Android)'!=''">
         <DCC_UsePackage>fmx;DbxCommonDriver;bindengine;IndyIPCommon;emsclient;IndyProtocols;dbxcds;FmxTeeUI;FireDACSqliteDriver;DbxClientDriver;soapmidas;dbexpress;inet;FireDACDBXDriver;CustomIPTransport;IndySystem;ibxbindings;FireDACCommon;bindcompdbx;rtl;DBXSqliteDriver;DataSnapFireDAC;FireDAC;xmlrtl;ibxpress;dsnap;DataSnapNativeClient;FireDACCommonDriver;IndyIPClient;bindcompfmx;ibmonitor;fmxFireDAC;DataSnapCommon;fmxase;dbrtl;DBXInterBaseDriver;bindcomp;IndyCore;RESTBackendComponents;RESTComponents;IndyIPServer;dsnapxml;DataSnapClient;DataSnapProviderClient;emsclientfiredac;FireDACDSDriver;tethering;CloudService;FMXTee;soaprtl;soapserver;FireDACIBDriver;$(DCC_UsePackage)</DCC_UsePackage>
@@ -190,9 +189,6 @@
         <DelphiCompile Include="$(MainSource)">
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
-        <DCCReference Include="..\..\Chatti\Project\Extern.ApiKey.pas">
-            <Form>$ENDIF</Form>
-        </DCCReference>
         <DCCReference Include="Unit1.pas">
             <Form>Form1</Form>
         </DCCReference>
@@ -217,6 +213,11 @@
                     <Source Name="MainSource">Project1.dpr</Source>
                 </Source>
                 <Excluded_Packages>
+                    <Excluded_Packages Name="c:\delphicomps\FastReports\FastReport FMX Embarcadero edition\LibD28\dclFMXfrxDB28.bpl">FastReport FMX 2.0 DB Components</Excluded_Packages>
+                    <Excluded_Packages Name="c:\delphicomps\FastReports\vcl\LibD28\dclfrx28.bpl">FastReport VCL Components</Excluded_Packages>
+                    <Excluded_Packages Name="c:\delphicomps\FastReports\vcl\LibD28\dclfrxDB28.bpl">FastReport VCL DB Components</Excluded_Packages>
+                    <Excluded_Packages Name="c:\delphicomps\FastReports\vcl\LibD28\dclfrxe28.bpl">FastReport VCL Exports</Excluded_Packages>
+                    <Excluded_Packages Name="c:\delphicomps\FastReports\vcl\LibD28\dclfrxtee28.bpl">FastReport VCL Tee Components</Excluded_Packages>
                     <Excluded_Packages Name="$(BDSBIN)\dcloffice2k280.bpl">Microsoft Office 2000 Beispiele für gekapselte Komponenten für Automatisierungsserver</Excluded_Packages>
                     <Excluded_Packages Name="$(BDSBIN)\dclofficexp280.bpl">Microsoft Office XP Beispiele für gekapselte Komponenten für Automation Server</Excluded_Packages>
                 </Excluded_Packages>

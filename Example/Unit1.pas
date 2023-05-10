@@ -25,9 +25,6 @@ uses
   Rest.Json,
   System.Generics.Collections,
   Rest.JsonReflect,
-{$IFDEF baumwollschaf}
-  Extern.ApiKey,
-{$ENDIF}
   FMX.ListBox,
   FMX.Layouts;
 
@@ -113,10 +110,14 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   ReportMemoryLeaksOnShutdown := True;
-{$IFDEF baumwollschaf}
-  RDChatGpt1.ApiKey := S(TExternalStuff.ApiKey);
-{$ENDIF}
-  RDChatGpt1.LoadModels;
+  if RDChatGpt1.ApiKey = '' then
+  begin
+    ShowMessage('ApiKey not set.');
+  end
+  else
+  begin
+    RDChatGpt1.LoadModels;
+  end;
 end;
 
 procedure TForm1.RDChatGpt1Answer(Sender: TObject; AMessage: string);
