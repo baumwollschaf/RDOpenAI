@@ -142,7 +142,7 @@ begin
   ComboBox1.Items.Clear;
   for var i: Integer := 0 to AModels.Data.Count - 1 do
   begin
-    ComboBox1.Items.Add(AModels.Data[i].Root);
+    ComboBox1.Items.Add(AModels.Data[i].ID);
   end;
   ComboBox1.ItemIndex := ComboBox1.Items.IndexOf(RDChatGpt1.Model);
   ComboBox1.Enabled := ComboBox1.ItemIndex <> -1;
