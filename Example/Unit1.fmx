@@ -27,7 +27,6 @@ object Form1: TForm1
   end
   object ComboBox1: TComboBox
     Align = MostTop
-    Enabled = False
     Margins.Left = 8.000000000000000000
     Margins.Top = 8.000000000000000000
     Margins.Right = 8.000000000000000000
@@ -49,6 +48,7 @@ object Form1: TForm1
     Size.Width = 464.000000000000000000
     Size.Height = 17.000000000000000000
     Size.PlatformDefault = False
+    TextSettings.Trimming = None
     Text = 'Models'
     TabOrder = 5
   end
@@ -90,6 +90,7 @@ object Form1: TForm1
       Size.PlatformDefault = False
       TabOrder = 1
       Text = 'Ask'
+      TextSettings.Trimming = None
       OnClick = Button1Click
     end
     object Button2: TButton
@@ -105,12 +106,13 @@ object Form1: TForm1
       Size.PlatformDefault = False
       TabOrder = 0
       Text = 'Check Moderations'
+      TextSettings.Trimming = None
       OnClick = Button2Click
     end
   end
   object RDChatGpt1: TRDChatGpt
     Temperature = 0.100000000000000000
-    Model = 'text-davinci-003'
+    Model = 'gpt-3.5-turbo'
     URL = 'https://api.openai.com/v1'
     OnAnswer = RDChatGpt1Answer
     OnError = RDChatGpt1Error
