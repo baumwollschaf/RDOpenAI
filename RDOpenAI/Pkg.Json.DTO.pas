@@ -20,8 +20,11 @@ type
   end;
 
   TJsonDTO = class(TArrayMapper)
-  private
+  strict private
+{$IFDEF VER350} // Delphi11
     FOptions: TJsonOptions;
+{$ENDIF}
+  private
     class procedure PrettyPrintPair(aJSONValue: TJSONPair; aOutputStrings: TStrings; Last: Boolean; Indent: Integer);
     class procedure PrettyPrintJSON(aJSONValue: TJsonValue; aOutputStrings: TStrings; Indent: Integer = 0); overload;
     class procedure PrettyPrintArray(aJSONValue: TJSONArray; aOutputStrings: TStrings; Last: Boolean; Indent: Integer);
@@ -58,12 +61,18 @@ uses
 constructor TJsonDTO.Create;
 begin
   inherited;
+{$IFDEF VER350} // Delphi11
   FOptions := [joDateIsUTC, joDateFormatISO8601];
+{$ENDIF}
 end;
 
 function TJsonDTO.GetAsJson: string;
 begin
+{$IFDEF VER350} // Delphi11
   Result := TJson.ObjectToJsonString(Self, FOptions);
+{$ELSE}
+  Result := TJson.ObjectToJsonString(Self);
+{$ENDIF}
 end;
 
 const
@@ -84,14 +93,14 @@ begin
       PrettyPrintPair(TJSONObject(aJSONValue).Pairs[i], aOutputStrings, i = TJSONObject(aJSONValue).Count - 1, Ident);
 
     aOutputStrings.Add(StringOfChar(' ', Ident) + '}');
-  end else if aJSONValue is TJSONArray then
+  end
+  else if aJSONValue is TJSONArray then
     PrettyPrintArray(TJSONArray(aJSONValue), aOutputStrings, i = TJSONObject(aJSONValue).Count - 1, Ident)
   else
     aOutputStrings.Add(StringOfChar(' ', Ident) + aJSONValue.ToString);
 end;
 
-class procedure TJsonDTO.PrettyPrintArray(aJSONValue: TJSONArray; aOutputStrings: TStrings; Last: Boolean;
-  Indent: Integer);
+class procedure TJsonDTO.PrettyPrintArray(aJSONValue: TJSONArray; aOutputStrings: TStrings; Last: Boolean; Indent: Integer);
 var
   i: Integer;
 begin
@@ -128,8 +137,7 @@ begin
   end;
 end;
 
-class procedure TJsonDTO.PrettyPrintPair(aJSONValue: TJSONPair; aOutputStrings: TStrings; Last: Boolean;
-  Indent: Integer);
+class procedure TJsonDTO.PrettyPrintPair(aJSONValue: TJSONPair; aOutputStrings: TStrings; Last: Boolean; Indent: Integer);
 const
   TEMPLATE = '%s:%s';
 var
@@ -183,7 +191,11 @@ begin
         raise EConversionError.Create(SCannotCreateObject);
     end;
 
+{$IFDEF VER350} // Delphi11
     TJson.JsonToObject(Self, JSONObject, FOptions);
+{$ELSE}
+    TJson.JsonToObject(Self, JSONObject);
+{$ENDIF}
   finally
     JSONValue.Free;
   end;
@@ -254,7 +266,7 @@ end;
 
 constructor GenericListReflectAttribute.Create;
 begin
-  inherited Create(ctObjects, rtObjects, TGenericListFieldInterceptor, nil, false);
+  inherited Create(ctObjects, rtObjects, TGenericListFieldInterceptor, nil, False);
 end;
 
 type
