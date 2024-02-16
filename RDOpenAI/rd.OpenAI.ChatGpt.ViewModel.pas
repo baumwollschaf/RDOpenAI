@@ -39,7 +39,7 @@ type
   public type
     TFinishReason = (frNone, frStop, frLength);
   public const
-    cVERSION = '1.10';
+    cVERSION = '1.60';
   private
     function StrToFinishReason(AValue: string): TFinishReason;
   private const
