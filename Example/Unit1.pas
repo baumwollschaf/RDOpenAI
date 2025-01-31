@@ -133,6 +133,8 @@ end;
 
 procedure TForm1.RDChatGpt1Error(Sender: TObject; AMessage: string);
 begin
+  if AMessage.Trim.IsEmpty then
+    Exit;
   Memo1.Lines.Add('Error: ' + AMessage);
 end;
 

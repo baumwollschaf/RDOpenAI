@@ -10,6 +10,19 @@ uses
 {$M+}
 
 type
+  TError = class
+  private
+    FCode: string;
+    FMessage: string;
+    FParam: string;
+    FType: string;
+  published
+    property Code: string read FCode write FCode;
+    property Message: string read FMessage write FMessage;
+    property Param: string read FParam write FParam;
+    property &Type: string read FType write FType;
+  end;
+
   TMessage = class
   private
     FContent: string;

@@ -39,7 +39,7 @@ type
   public type
     TFinishReason = (frNone, frStop, frLength);
   public const
-    cVERSION = '1.60';
+    cVERSION = '1.70';
   private
     function StrToFinishReason(AValue: string): TFinishReason;
   private const
@@ -158,6 +158,9 @@ type
   private
     FModerationInput: TModerationInput;
     FTimeOutSeconds: Integer;
+
+    function GetError(AResponse: TRESTResponse): String;
+
     procedure CheckApiKey;
     procedure CheckDallEGenInput;
     procedure CheckModel;
@@ -393,7 +396,7 @@ begin
 
     if FResponse.StatusCode <> 200 then
     begin
-      FLastError := FResponse.StatusText;
+      FLastError := GetError(FResponse);
       DoError(FLastError);
       Exit;
     end;
@@ -515,7 +518,7 @@ begin
 
     if FResponse.StatusCode <> 200 then
     begin
-      FLastError := FResponse.StatusText;
+      FLastError := GetError(FResponse);
       DoError(FLastError);
       Exit;
     end;
@@ -668,6 +671,45 @@ begin
   Assert(Result <> '');
 end;
 
+function TRDOpenAI.GetError(AResponse: TRESTResponse): String;
+var
+  JSONObject: TJSONObject;
+  ErrorObject: TJSONObject;
+  ErrorInstance: TError;
+begin
+  Result := '';
+  if AResponse = nil then
+    Exit('Unknown Error');
+  try
+    JSONObject := TJSONObject.ParseJSONValue(AResponse.Content) as TJSONObject;
+    if assigned(JSONObject) then
+    begin
+      ErrorObject := JSONObject.GetValue<TJSONObject>('error');
+      if assigned(ErrorObject) then
+      begin
+        try
+          ErrorInstance := TJson.JsonToObject<TError>(ErrorObject);
+          try
+            Result := ErrorInstance.Message;
+          finally
+            FreeAndNil(ErrorInstance);
+          end;
+        except
+          Result := '';
+        end;
+
+        if Result.IsEmpty then
+        begin
+          Result := AResponse.StatusText; // Fallback
+        end;
+
+      end;
+    end;
+  finally
+    FreeAndNil(JSONObject);
+  end;
+end;
+
 function TRDOpenAI.GetURL: string;
 begin
   Result := BaseURL;
@@ -724,7 +766,9 @@ begin
   begin
     FRequest.ExecuteAsync(ChatCompletionCallback, True, True, DoCompletionHandlerWithError);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
     CompletionCallback;
   end;
@@ -769,7 +813,9 @@ begin
   begin
     FRequest.ExecuteAsync(CompletionCallback, True, True, DoCompletionHandlerWithError);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
     CompletionCallback;
   end;
@@ -813,7 +859,9 @@ begin
   begin
     FRequest.ExecuteAsync(DallEGenImageCallback, True, True, DoCompletionHandlerWithError);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
     DallEGenImageCallback;
   end;
@@ -856,7 +904,9 @@ begin
   begin
     FRequest.ExecuteAsync(InstrCompletionCallback, True, True, DoCompletionHandlerWithError);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
     InstrCompletionCallback;
   end;
@@ -900,7 +950,9 @@ begin
   begin
     FRequest.ExecuteAsync(ModerationsCallback, True, True, DoCompletionHandlerWithError);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
     ModerationsCallback;
   end;
@@ -937,7 +989,9 @@ begin
   begin
     FRequest.ExecuteAsync(ModelsCallback, True, True, DoCompletionHandlerWithError);
     Exit;
-  end else begin
+  end
+  else
+  begin
     FRequest.Execute;
     ModelsCallback;
   end;
@@ -956,7 +1010,7 @@ begin
 
     if FResponse.StatusCode <> 200 then
     begin
-      FLastError := FResponse.StatusText;
+      FLastError := GetError(FResponse);
       DoError(FLastError);
       Exit;
     end;
@@ -1009,7 +1063,7 @@ begin
 
     if FResponse.StatusCode <> 200 then
     begin
-      FLastError := FResponse.StatusText;
+      FLastError := GetError(FResponse);
       DoError(FLastError);
       Exit;
     end;
@@ -1057,7 +1111,7 @@ begin
 
     if FResponse.StatusCode <> 200 then
     begin
-      FLastError := FResponse.StatusText;
+      FLastError := GetError(FResponse);
       DoError(FLastError);
       Exit;
     end;
@@ -1102,7 +1156,7 @@ begin
 
     if FResponse.StatusCode <> 200 then
     begin
-      FLastError := FResponse.StatusText;
+      FLastError := GetError(FResponse);
       DoError(FLastError);
       Exit;
     end;
