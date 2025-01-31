@@ -44,7 +44,7 @@ type
     function StrToFinishReason(AValue: string): TFinishReason;
   private const
     cBEARER = 'Bearer';
-    cDEF_MAX_TOKENS = 2048; // 1024
+    cDEF_MAX_TOKENS = 1024; // 1024
     cDEF_URL = 'https://api.openai.com/v1';
     cDEF_TEMP = 0.1;
     cDEF_MODEL = 'gpt-3.5-turbo';
